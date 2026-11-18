@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The template's mod: rename the folder, this file, the assembly and the namespace to your mod's name (README "Use this template").
-    Built against the game's assemblies, never copied: the game loads them.
+    Husbandry (docs/husbandry.md): hitching posts that keep assigned animals in a pen, and breeding. Its records are in Husbandry.mod, generated
+    from the installed game by Husbandry.Data. Built against the game's assemblies, never copied: the game loads them.
   -->
 
   <PropertyGroup>
-    <AssemblyName>ExampleMod</AssemblyName>
-    <RootNamespace>ExampleMod</RootNamespace>
+    <AssemblyName>Husbandry</AssemblyName>
+    <RootNamespace>Husbandry</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

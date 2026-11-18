@@ -1,0 +1,28 @@
+# Releases Husbandry: a tag husbandry-v<version> builds the mod, checks the version against its meitou.json, and publishes
+# Husbandry-<version>.zip (with its SHA-256) holding the folder to drop into Kenshi/mods/. Packaging: GutenStructure package-meitou-mod.yml (pinned).
+name: Release
+
+on:
+  push:
+    tags: ["husbandry-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    permissions:
+      contents: read
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/release-gate.yml@b61f1f282b7366f06915df81c5012330cdaf9fa3
+
+  release:
+    needs: release-gate
+    permissions:
+      contents: write
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/package-meitou-mod.yml@b61f1f282b7366f06915df81c5012330cdaf9fa3
+    with:
+      mod-folder: Husbandry
+      slug: husbandry
+      channel: release
+      test-project: .
+      empty-data-mod: false
