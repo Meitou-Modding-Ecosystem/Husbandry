@@ -48,7 +48,9 @@ static class TradeWindowGender
     /// <summary>
     /// Rewrites the gender line of each animal row of a window just opened for buying animals.
     /// </summary>
+#pragma warning disable IDE1006 // Harmony passes the patched object only to a parameter named __instance.
     static void Postfix(object __instance, World world)
+#pragma warning restore IDE1006
     {
         if (Sexes is not { } sexes || WindowField?.GetValue(__instance) is not { } window) return;
         if (Traverse.Create(window).Property("Kind").GetValue<CharacterTradeKind>() != CharacterTradeKind.AnimalBuying) return;
