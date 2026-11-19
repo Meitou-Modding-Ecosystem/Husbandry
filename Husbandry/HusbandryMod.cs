@@ -5,7 +5,8 @@ using Meitou.Simulation;
 namespace Husbandry;
 
 /// <summary>
-/// Husbandry's entry (docs/husbandry.md): the Hitching Post job, the system that keeps pens and breeds, the settings and the debug rows.
+/// Husbandry's entry (docs/husbandry.md): the Hitching Post job, the system that keeps pens, breeds and runs the Beastmaster of Mourn, the
+/// trade window's gender patch, the settings and the debug rows.
 /// </summary>
 public sealed class HusbandryMod : IMod
 {
@@ -29,9 +30,14 @@ public sealed class HusbandryMod : IMod
         c.AddSettings(Settings);
         if (c.Data.Find(HusbandryData.Post) is null) c.LogError("Husbandry.mod has no records: generate it (docs/husbandry.md \"Data file\").");
 
+        if (c.Data.Find(HusbandryData.TraderSquad) is null)
+            c.LogError("Husbandry.mod has no Beastmaster: generate it again (docs/husbandry.md \"Data file\").");
+
+        c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         c.AddJob(Hitches.Kind);
         c.AddSystem("husbandry", ctx => _latest = new HusbandrySystem(ctx, Settings, c.RngPurpose, c.Log), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
+        c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
         c.AddDebugCommand("Husbandry: try breeding now", d =>
         {
             d.Enqueue(new BreedNowCommand { Tick = d.Tick });
