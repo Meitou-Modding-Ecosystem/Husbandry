@@ -130,8 +130,26 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         }
 
         cold.Engaged = true;
-        if (Idle(world, at, cold)) Pen(world, at, place.Pen, purpose);
+        if (!Idle(world, at, cold)) return;
+
+        if (Stranded(world, at)) PutAt(world, at, Ground(world, StockSpot(world, place.Pen, Slots.IndexOf(slot))));
+        else Pen(world, at, place.Pen, purpose);
     }
+
+    /// <summary>
+    /// Whether a penned animal stands up on a building (a roof or an upper floor, where a pen placed by an older version put the stock), from where it
+    /// cannot walk down into the pen.
+    /// </summary>
+    static bool Stranded(World world, int at)
+    {
+        var pos = world.Characters.Next[at].Position;
+        return pos.Y - world.Walkability.TerrainHeight(pos.X, pos.Z) > MournBar.GroundSlack;
+    }
+
+    /// <summary>
+    /// A point of the ground at a spot.
+    /// </summary>
+    static Vector3 Ground(World world, Vector2 spot) => new(spot.X, world.Walkability.TerrainHeight(spot.X, spot.Y), spot.Y);
 
     /// <summary>
     /// A stocked animal the buying window made the player's: it follows the player character nearest the Beastmaster (the buyer stands talking to
@@ -206,13 +224,13 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     }
 
     /// <summary>
-    /// Where a place's new animal is put: its own point on a ring round the pen's centre when walkable, else the centre.
+    /// Where a place's new animal is put: its own point on a ring round the pen's centre when open ground, else the centre.
     /// </summary>
     static Vector2 StockSpot(World world, Vector2 pen, int index)
     {
         float angle = index * MathF.Tau / 6;
         var spot = pen + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * StockRing;
-        return world.Walkability.IsWalkable(spot.X, spot.Y) ? spot : pen;
+        return MournBar.OpenGround(world, spot) ? spot : pen;
     }
 
     /// <summary>
@@ -228,7 +246,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         float angle = Rng.Float(Rng.Hash(roll, 1, 0, 1)) * MathF.Tau;
         float r = MathF.Sqrt(Rng.Float(Rng.Hash(roll, 1, 0, 2))) * PenRadius * 0.5f;
         var goal = pen + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r;
-        if (!world.Walkability.IsWalkable(goal.X, goal.Y)) goal = pen;
+        if (!MournBar.OpenGround(world, goal)) goal = pen;
 
         TaskStart.Walk(world, at, goal, SpeedMode.Walk, TaskType.MoveOnFreeWill, TaskSource.Npc);
     }
@@ -251,6 +269,12 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     /// How near his spot in the bar counts as there.
     /// </summary>
     const float CounterReach = 20;
+
+    /// <summary>
+    /// How far from his spot he is put straight back instead of walked: past this he has lost his way (a walk to the spot failed and left him
+    /// across town), and a walk would fail again.
+    /// </summary>
+    const float LostReach = 150;
 
     /// <summary>
     /// Game hours between tries to place him when a try fails.
@@ -326,18 +350,36 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     }
 
     /// <summary>
-    /// Keeps him off the AI, and walks him back to his spot in the bar whenever he stands idle away from it.
+    /// Keeps him off the AI, walks him back to his spot in the bar whenever he stands idle away from it, and puts him there when he is far from it
+    /// out of a fight.
     /// </summary>
     static void KeepAtBar(World world, int trader, BarPlace place)
     {
         var cold = world.Characters.Cold(trader)!;
         cold.Engaged = true;
-        if (!Idle(world, trader, cold)) return;
 
         var at = world.Characters.Next[trader].Position;
-        if (Vector2.Distance(new Vector2(at.X, at.Z), new Vector2(place.Counter.X, place.Counter.Z)) <= CounterReach) return;
+        float away = Vector2.Distance(new Vector2(at.X, at.Z), new Vector2(place.Counter.X, place.Counter.Z));
+        if (away > LostReach && !cold.InCombat && !Hitches.Down(cold))
+        {
+            PutAt(world, trader, place.Counter);
+            return;
+        }
+
+        if (away <= CounterReach || !Idle(world, trader, cold)) return;
 
         TaskStart.Walk(world, trader, place.Counter, SpeedMode.Walk, TaskType.MoveOnFreeWill, TaskSource.Npc);
+    }
+
+    /// <summary>
+    /// Stands a character at a point, on the floor nearest its height there, as the debug menu's teleport does.
+    /// </summary>
+    static void PutAt(World world, int slot, Vector3 point)
+    {
+        var table = world.Characters;
+        TaskStart.Stand(table, slot);
+        table.Next[slot].Position = new Vector3(point.X, world.Walkability.GroundHeight(point.X, point.Z, point.Y), point.Z);
+        table.Next[slot].Velocity = Vector3.Zero;
     }
 
     /// <summary>

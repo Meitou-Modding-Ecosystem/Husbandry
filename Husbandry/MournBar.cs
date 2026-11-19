@@ -30,9 +30,16 @@ public static class MournBar
     const float PenGap = 90;
 
     /// <summary>
-    /// Extra distances tried when the first spot is not walkable.
+    /// Extra distances tried when the first spot is not open ground. The doors' distance can be near nothing (a bar with doors on more than one side
+    /// averages them to its middle), so the first spot can lie on the bar itself; the later ones reach past a large building.
     /// </summary>
-    static readonly float[] Gaps = [0, 40, 80];
+    static readonly float[] Gaps = [0, 40, 80, 120, 160, 200];
+
+    /// <summary>
+    /// How far the highest walkable surface may stand above the terrain for a spot to count as open ground, in game units: more lifts it onto a
+    /// roof or an upper floor (a storey is some 30 units; Mourn's bar roof stood 55 above the street).
+    /// </summary>
+    public const float GroundSlack = 15;
 
     /// <summary>
     /// Turns from straight behind tried when a spot is not walkable, in degrees.
@@ -76,7 +83,7 @@ public static class MournBar
 
     /// <summary>
     /// The pen's centre: straight back from the doors through the bar's origin and on past it, turned or pushed further until the ground round it is
-    /// walkable; straight behind when none is.
+    /// open; straight behind when none is.
     /// </summary>
     static Vector2 PenSpot(World world, TownBuilding bar, Vector3 door, float penRadius)
     {
@@ -98,19 +105,30 @@ public static class MournBar
     }
 
     /// <summary>
-    /// Whether the spot and four points round it are walkable.
+    /// Whether the spot and four points round it are open ground.
     /// </summary>
     static bool Clear(World world, Vector2 spot, float radius)
     {
-        if (!world.Walkability.IsWalkable(spot.X, spot.Y)) return false;
+        if (!OpenGround(world, spot)) return false;
 
         for (int k = 0; k < 4; k++)
         {
-            var at = spot + Turn(Vector2.UnitX, k * 90) * radius;
-            if (!world.Walkability.IsWalkable(at.X, at.Y)) return false;
+            if (!OpenGround(world, spot + Turn(Vector2.UnitX, k * 90) * radius)) return false;
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Whether a spot is walkable ground with nothing walkable over it: not a roof, a walkway or a building's upper floor, which the walkable check
+    /// alone lets through (it answers for the highest surface).
+    /// </summary>
+    public static bool OpenGround(World world, Vector2 spot)
+    {
+        var walk = world.Walkability;
+        if (!walk.IsWalkable(spot.X, spot.Y)) return false;
+
+        return walk.GroundHeight(spot.X, spot.Y) - walk.TerrainHeight(spot.X, spot.Y) <= GroundSlack;
     }
 
     /// <summary>
