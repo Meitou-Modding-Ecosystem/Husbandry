@@ -52,6 +52,12 @@ public sealed class HusbandrySettings
     public int ChanceStarving { get; set; } = 10;
 
     /// <summary>
+    /// Whether the Hive Beastmaster sells animals in Mourn's bar.
+    /// </summary>
+    [Setting("Beastmaster of Mourn", Hint = "A hiver in Mourn's bar sells garru, crabs and bonedogs, a male and a female of each.")]
+    public bool Beastmaster { get; set; } = true;
+
+    /// <summary>
     /// A copy, for the simulation to read without the settings page changing it mid-check.
     /// </summary>
     public HusbandrySettings Copy() => (HusbandrySettings)MemberwiseClone();

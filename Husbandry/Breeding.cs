@@ -9,7 +9,7 @@ namespace Husbandry;
 /// pup every <see cref="HusbandrySettings.DaysBetweenTries"/> game days, the first try that long after she is paired. The chance follows the
 /// hungrier of her and the best-fed male. A pup is born beside her: her record, aged <see cref="NewbornAge"/>, in her squad, hitched to her post.
 /// </summary>
-public sealed class Breeding(RngPurpose purpose, Action<string> log)
+public sealed class Breeding(RngPurpose purpose, Sexes sexes, Action<string> log)
 {
     /// <summary>
     /// A newborn's age (a "Pup" until 0.4).
@@ -44,10 +44,10 @@ public sealed class Breeding(RngPurpose purpose, Action<string> log)
         var paired = new HashSet<uint>();
         foreach (var group in Groups(hitched))
         {
-            var males = group.Where(h => !Hitches.Female(h.Cold, purpose)).ToList();
+            var males = group.Where(h => !sexes.Female(h.Cold)).ToList();
             if (males.Count == 0) continue;
 
-            foreach (var female in group.Where(h => Hitches.Female(h.Cold, purpose)))
+            foreach (var female in group.Where(h => sexes.Female(h.Cold)))
             {
                 uint serial = female.Cold.PortraitSerial!.Value;
                 paired.Add(serial);

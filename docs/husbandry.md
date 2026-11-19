@@ -1,6 +1,6 @@
 # Husbandry (content mod)
 
-Hitching posts and breeding for the player's animals (`husbandry`, no dependencies). Code: `Husbandry/`; data file generator: `Husbandry.Data/`.
+Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; data file generator: `Husbandry.Data/`.
 Needs the engine's mod jobs and `PopulationSystem.SpawnAnimal` (MeitouClient fork PR #11; engine docs/modding.md "Mod jobs", "World hooks").
 
 ## Setting up a ranch
@@ -26,7 +26,8 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
 - **Adults**: age 0.6 or more, the game's "Adult" label (below 0.4 "Pup", below 0.6 "Teen"); elders too.
 - **Sex**: the game gives animals none (no ANIMAL_CHARACTER has `female chance`; Meitou draws every animal male, engine docs/game/animals.md
   "Breeding and eggs"), so the mod decides it half and half from the character's portrait serial, which is saved with the character. A character
-  loaded from a save that has no serial gets a new one on load, so its sex is fixed from the first save made with Meitou.
+  loaded from a save that has no serial gets a new one on load, so its sex is fixed from the first save made with Meitou. An animal the
+  Beastmaster sells keeps the sex it was sold as instead (kept by serial in the sidecar).
 - **Same kind**: same RACE. Pack Beast and Garru share Garru; Domesticated Bull and Pack / Wild Bull are different races. Robot races (Iron and
   Security Spiders, the Cleanser) never breed.
 - **Tries**: each hitched adult female with an adult male of her race at the same post tries every **Days between tries** (default 3) game
@@ -35,6 +36,35 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
 - **Birth**: at once, no pregnancy. The pup is the mother's record, aged 0.05, born 12 units from her in her squad (a player character),
   hitched to her post, and "<mother> has given birth to a pup at the hitching post." is posted. None while the faction is at its head cap.
 
+## The Beastmaster of Mourn
+
+A Western Hive soldier drone, the **Hive Beastmaster**, stands in Mourn's bar and sells garru, crabs and bonedogs, a male and a female of each,
+kept in a pen behind the bar.
+
+- **Where**: Mourn is TOWN `963-gamedata.base` (editor name "Capital"); its bar is the home of the barman's squad `Bar Mourn`
+  (`95554-Mourn.mod`), else the town's first bar. The town's housing picks that building, so the mod finds it in the running world, once
+  Mourn's zone is loaded and the bar's doors are registered. His spot is the bar's first general node. The pen's centre lies on the line from
+  the doors' average through the bar's origin, 90 units past the doors' distance, turned up to 75 degrees or pushed up to 80 units further
+  until the ground within 30 units of it is walkable. Pen radius 50.
+- **Him**: CHARACTER `3-Husbandry.mod`, a copy of the game's Western Hive "Soldier Drone" (`42196-rebirth.mod`) in Masterwork (armour grade
+  5) Crab Armour and Crab Trousers, a Hiver Chain Shirt and a Naginata of Cross make (its only model, Meitou, is the top grade; a soldier
+  drone wears no hat or shoes), combat skills 80, strength 75. Squad `4-Husbandry.mod`: him alone, Western Hive, no AI package. The mod adds
+  it with `PopulationSystem.SpawnPlatoon` behind the bar (tag `husbandry.beastmaster`, saved with the platoon), holds it
+  (`HoldPlatoon`), keeps him and his stock off the AI (`Engaged`) and walks him back to his spot whenever he stands idle away from it. A killed
+  Beastmaster is not replaced.
+- **Talk**: his conversation (DIALOGUE `5-Husbandry.mod`) is a hiver's talk of breaking wild beasts for the Hive; **Show me your beasts.**
+  runs DA 48 CHOOSE_ANIMALS_BUYING, the game's animal buying window, which lists his squad's animals within 2304 units (engine
+  docs/game/animals.md "Buying animals"). Prices are the game's: 14000 x (age + 0.1).
+- **Stock**: six places, a female and a male each of Garru (`42201-rebirth.mod`), Crab (`56088-Newwworld.mod`) and Dog, the bonedog
+  (`3979-gamedata.base`). Each is made with `PopulationSystem.SpawnAnimal` into his squad on a ring 20 units round the pen's centre, aged 0.8
+  (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back; one inside
+  strolls now and then.
+- **Buying**: the window makes the bought animals the player's (the game's recruit). At the next check (once a game second) the mod sees the
+  animal has become the player's and orders it to follow the player character nearest the Beastmaster (the buyer, who stands talking to him),
+  so it walks out of the pen with its new squad. Its place fills again 24 game hours later. A place whose animal is gone without being sold (it
+  died, or the squad left the world and came back without it) fills at once. The window's "Gender:" line shows the mod's sex (a Harmony
+  postfix on the engine's `CharacterTrading.OpenCharacterTrade`; the game reads the look's `sex female`, which no animal has).
+
 ## Load scan
 
 Any of the player's animals can be hitched, those of other mods included: the job takes every animal (the engine's `SquadRegistry.IsAnimal`), so
@@ -42,20 +72,23 @@ no list per kind is kept. At load the mod logs the animal kinds and races of the
 
 ## Settings
 
-Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), and the three chances.
+Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mourn (on by default).
 
 ## Debug rows (F10)
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
+- **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: try breeding now**: every paired female tries at the next check.
 
 ## Save data
 
-The sidecar holds the hitches (portrait serial, post id) and each paired female's next try (game hours), version 1. The engine keeps no mod jobs
+The sidecar holds the hitches (portrait serial, post id), each paired female's next try (game hours), the sexes the mod set (portrait serial,
+female) and the Beastmaster's six stock places (portrait serial, refill hour), version 2; a version 1 sidecar loads with none of the last two. The engine keeps no mod jobs
 in its save; the hitches go back on their characters at the first tick after a load. Both are in the world's state hash.
 
 ## Data file
 
 `Husbandry.mod`, record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`,
-without its cage function, category FARMING). Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
+without its cage function, category FARMING), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 16 its lines and the DA 48 action. A
+`.mod` generated before 0.2.0 lacks 3 to 16: generate it again. Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
 the Play project does it on F5. Untested in play.

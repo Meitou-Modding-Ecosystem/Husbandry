@@ -69,18 +69,6 @@ public static class Hitches
     }
 
     /// <summary>
-    /// Whether an animal is female. Neither the game nor its data give animals a sex, so the mod decides it once from the character's portrait
-    /// serial (saved with the character), half and half.
-    /// </summary>
-    public static bool Female(CharacterCold cold, RngPurpose purpose) =>
-        cold.PortraitSerial is { } serial && (Rng.Hash(0, serial, purpose, SexCounter) & 1) == 1;
-
-    /// <summary>
-    /// The counter of the sex roll.
-    /// </summary>
-    const ulong SexCounter = 0x5E7;
-
-    /// <summary>
     /// Whether an animal is an adult (<see cref="AdultAge"/>).
     /// </summary>
     public static bool Adult(CharacterCold cold) => cold.Age >= AdultAge;
