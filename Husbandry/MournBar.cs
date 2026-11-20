@@ -1,6 +1,7 @@
 using System.Numerics;
 using Meitou.Data.World;
 using Meitou.Simulation;
+using Meitou.Simulation.Locks;
 using Meitou.Simulation.Population;
 
 namespace Husbandry;
@@ -12,7 +13,8 @@ namespace Husbandry;
 /// <param name="Counter">His spot inside the bar.</param>
 /// <param name="Pen">The pen's centre, behind the bar.</param>
 /// <param name="Floor">The height of the bar's ground floor (its lowest door): the pen lies at or under it, never on the bar.</param>
-public sealed record BarPlace(TownSite Site, Vector3 Counter, Vector2 Pen, float Floor);
+/// <param name="Front">The ground just outside the bar's lowest door, where a bought animal is put.</param>
+public sealed record BarPlace(TownSite Site, Vector3 Counter, Vector2 Pen, float Floor, Vector3 Front);
 
 /// <summary>
 /// Finds Mourn's bar in the running world: the home of the town's "Bar Mourn" residents (found at run time, since the town's housing picks the
@@ -54,6 +56,11 @@ public static class MournBar
     public const float GroundSlack = 15;
 
     /// <summary>
+    /// How far outside the bar's door a bought animal is put, in game units, the nearer tried when the farther is not open ground.
+    /// </summary>
+    static readonly float[] FrontGaps = [40, 25];
+
+    /// <summary>
     /// The bar and its spots; null while Mourn, its bar or the bar's doors are not in the world.
     /// </summary>
     public static BarPlace? Find(World world, PopulationData data, float penRadius)
@@ -63,8 +70,9 @@ public static class MournBar
         var doors = world.Fixtures.DoorsByBuilding[bar.Key].ToList();
         if (doors.Count == 0) return null;
 
-        float floor = doors.Min(d => d.Position.Y);
-        return new BarPlace(site, Counter(bar), PenSpot(world, bar, floor, penRadius), floor);
+        var door = doors.MinBy(d => d.Position.Y)!;
+        float floor = door.Position.Y;
+        return new BarPlace(site, Counter(bar), PenSpot(world, bar, floor, penRadius), floor, FrontSpot(world, bar, door, floor));
     }
 
     /// <summary>
@@ -117,6 +125,29 @@ public static class MournBar
         }
 
         return origin + offset;
+    }
+
+    /// <summary>
+    /// The ground outside a door: along the leaf's normal on the side away from the bar's origin (as the game's leave-building walk takes it), else
+    /// from the bar's origin through the door; the door itself when neither point is open ground.
+    /// </summary>
+    static Vector3 FrontSpot(World world, TownBuilding bar, Fixture door, float floor)
+    {
+        var spot = world.Fixtures.DoorSpotOf(door);
+        var centre3 = spot?.Centre ?? door.Position;
+        var centre = new Vector2(centre3.X, centre3.Z);
+        var away = centre - new Vector2(bar.Position.X, bar.Position.Z);
+        var normal = spot is { } s ? new Vector2(s.Normal.X, s.Normal.Z) : away;
+        if (normal.LengthSquared() < 1e-6f) normal = Vector2.UnitX;
+
+        normal = Vector2.Normalize(Vector2.Dot(normal, away) < 0 ? -normal : normal);
+        foreach (float gap in FrontGaps)
+        {
+            var at = centre + normal * gap;
+            if (OpenGround(world, at, floor)) return new Vector3(at.X, world.Walkability.GroundHeight(at.X, at.Y, floor), at.Y);
+        }
+
+        return new Vector3(centre.X, floor, centre.Y);
     }
 
     /// <summary>

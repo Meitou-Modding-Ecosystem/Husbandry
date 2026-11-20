@@ -64,8 +64,11 @@ kept in a pen behind the bar.
   (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back; one inside
   strolls now and then; one standing more than 15 units over the bar's floor (on its roof or upper floor) is put back on its ring spot.
 - **Buying**: the window makes the bought animals the player's (the game's recruit). At the next check (once a game second) the mod sees the
-  animal has become the player's and orders it to follow the player character nearest the Beastmaster (the buyer, who stands talking to him),
-  so it walks out of the pen with its new squad. Its place fills again 24 game hours later. A place whose animal is gone without being sold (it
+  animal has become the player's, puts it on the ground 40 units outside the bar's lowest door (along the door's normal, away from the bar; 25
+  when that is not open ground; no path from the pen to the buyer is sure) and orders it to follow the player character nearest the
+  Beastmaster (the buyer, who stands talking to him). A player's animal bought from him (its sex is in his table) standing 15 to 150 units over
+  the bar's floor within 300 units of the door, out of a fight, is put there too: stock sold from the roof by v0.2.1 could not walk down.
+  Its place fills again 24 game hours later. A place whose animal is gone without being sold (it
   died, or the squad left the world and came back without it) fills at once. The window's "Gender:" line shows the mod's sex (a Harmony
   postfix on the engine's `CharacterTrading.OpenCharacterTrade`; the game reads the look's `sex female`, which no animal has).
 
