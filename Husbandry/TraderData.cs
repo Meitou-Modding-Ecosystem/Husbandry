@@ -5,7 +5,8 @@ namespace Husbandry;
 
 /// <summary>
 /// The Beastmaster's records (docs/husbandry.md "Data file"): his CHARACTER, a copy of the game's Western Hive "Soldier Drone" in the best kit, his
-/// SQUAD_TEMPLATE, and his conversation (a DIALOGUE with its lines and the DA 48 action that opens the animal buying window). The kit, faction and
+/// SQUAD_TEMPLATE (a trader's, with an empty VENDOR_LIST: the mod stocks his shop with animal packs, <see cref="PackStock"/>), and his conversation (a
+/// DIALOGUE with its lines, the DA 48 action that opens the animal buying window and the DA 1 action that opens his shop). The kit, faction and
 /// links name the game's records by id; a linked record the game lacks is left out.
 /// </summary>
 public static class TraderData
@@ -37,9 +38,14 @@ public static class TraderData
     const int TopGrade = 5;
 
     /// <summary>
-    /// The DIALOG_ACTION numbers used: 48 CHOOSE_ANIMALS_BUYING.
+    /// The DIALOG_ACTION numbers used: 1 TRADE, 48 CHOOSE_ANIMALS_BUYING.
     /// </summary>
-    const int BuyAnimals = 48;
+    const int Trade = 1, BuyAnimals = 48;
+
+    /// <summary>
+    /// Game hours between his shop's fills (its <c>vendors refresh time</c>): a day, as his pen's.
+    /// </summary>
+    const float RefreshHours = 24;
 
     /// <summary>
     /// His records, after the research and the post. Throws when the game has no <see cref="ModelName"/> character.
@@ -47,7 +53,7 @@ public static class TraderData
     public static IEnumerable<FcsRecord> Build(GameDatabase game)
     {
         var model = Model(game) ?? throw new InvalidOperationException($"The game data has no CHARACTER '{ModelName}'.");
-        return [CharacterRecord(game, model), SquadRecord(game), .. Conversation()];
+        return [CharacterRecord(game, model), SquadRecord(game), .. Conversation(), PackList()];
     }
 
     /// <summary>
@@ -64,9 +70,9 @@ public static class TraderData
     #region Character and squad
 
     /// <summary>
-    /// The squad flags he has off: no shop, no home, no regrowth.
+    /// The squad flags he has off: no home, no regrowth.
     /// </summary>
-    static readonly string[] OffFlags = ["building public", "is trader", "regenerates", "roaming military", "malnourished", "sell home"];
+    static readonly string[] OffFlags = ["building public", "regenerates", "roaming military", "malnourished", "sell home"];
 
     /// <summary>
     /// The Beastmaster: the soldier drone's race, look and talk, with masterwork crab armour, a Cross naginata, a veteran's skills and his
@@ -86,6 +92,7 @@ public static class TraderData
         record.Ints["stats randomise"] = 5;
         record.Ints["money min"] = 0;
         record.Ints["money max"] = 0;
+        record.Bools["is trader"] = true;
         record.References["clothing"] = Links(game, Clothing, 1, 100);
         record.References["weapons"] = Links(game, [Weapon], 1, 0);
         record.References["weapon level"] = Links(game, [Maker], 0, 0);
@@ -94,7 +101,9 @@ public static class TraderData
     }
 
     /// <summary>
-    /// His squad: him alone (his stock joins it in play), of the Western Hive, with no AI package: the mod holds and walks him.
+    /// His squad: him alone (his stock joins it in play), of the Western Hive, with no AI package: the mod holds and walks him. A trader's with an
+    /// empty vendor list and no fill amount, so the engine gives it a shop with nothing in it and a purse, and the mod puts the packs in after each
+    /// fill.
     /// </summary>
     static FcsRecord SquadRecord(GameDatabase game)
     {
@@ -106,6 +115,10 @@ public static class TraderData
         record.Ints["num random chars"] = 0;
         record.Ints["num random chars max"] = 0;
         record.Ints["vendor money"] = 0;
+        record.Bools["is trader"] = true;
+        record.Ints["vendors fill total amount"] = 0;
+        record.Floats["vendors refresh time"] = RefreshHours;
+        record.References["vendors"] = [new FcsReference(HusbandryData.PackList, 100, 0, 0)];
         record.Strings["building name"] = "";
         record.Strings["layout interior"] = "";
         record.Strings["layout exterior"] = "";
@@ -127,12 +140,13 @@ public static class TraderData
     /// <summary>
     /// The record numbers of the conversation's lines, in file order after the DIALOGUE (5).
     /// </summary>
-    const int Greeting = 6, Show = 7, Buy = 8, AskWho = 9, Who = 10, AskHow = 11, How = 12, AskPairs = 13, Pairs = 14, AskBye = 15, Bye = 16;
+    const int Greeting = 6, Show = 7, Buy = 8, AskWho = 9, Who = 10, AskHow = 11, How = 12, AskPairs = 13, Pairs = 14, AskBye = 15, Bye = 16,
+        ShowPacks = 17, OpenShop = 18;
 
     /// <summary>
     /// The player's choices after each of his answers.
     /// </summary>
-    static readonly int[] Choices = [Show, AskWho, AskHow, AskPairs, AskBye];
+    static readonly int[] Choices = [Show, ShowPacks, AskWho, AskHow, AskPairs, AskBye];
 
     /// <summary>
     /// The DIALOGUE, its lines (his are speaker 0, the player's 1) and the buying action, in record number order.
@@ -172,8 +186,15 @@ public static class TraderData
                     + " same way. Sold beasts are gone from the pen; by the next day this one has caught more."),
             Line(AskBye, 1, [Bye], "Not today."),
             Line(Bye, 0, [], "The beasts will wait. They are patient. Like the Hive."),
+            Line(ShowPacks, 1, [], "Show me your packs.", effect: OpenShop),
+            Action(OpenShop, Trade),
         ];
     }
+
+    /// <summary>
+    /// His shop's VENDOR_LIST, empty: the packs are the mod's (<see cref="PackStock"/>), found in the merged data so other mods' packs are sold too.
+    /// </summary>
+    static FcsRecord PackList() => HusbandryData.New(HusbandryData.PackList, FcsRecordType.VendorList, "husbandry beastmaster packs");
 
     /// <summary>
     /// A DIALOGUE_LINE: who says it, its text (and a second wording), the lines that may follow, and an action it runs.

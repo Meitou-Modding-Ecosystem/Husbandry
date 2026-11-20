@@ -40,7 +40,8 @@ public sealed class StockSlot(int kind, bool female)
 /// The Hive Beastmaster of Mourn (docs/husbandry.md "The Beastmaster of Mourn"): a Western Hive soldier drone in the town's bar who sells garru,
 /// crabs and bonedogs, a male and a female of each, kept in a pen behind the bar. His conversation's "Show me your beasts" opens the game's own
 /// animal buying window (DA 48), which lists his squad's animals and makes the bought ones the player's; the mod then walks each bought animal out
-/// of the pen to follow the buyer, and fills the empty place a day later. Serial steps only.
+/// of the pen to follow the buyer, and fills the empty place a day later. "Show me your packs" opens his shop of animal packs
+/// (<see cref="PackStock"/>). Serial steps only.
 /// </summary>
 public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Action<string> log)
 {
@@ -319,6 +320,11 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     double _nextTry;
 
     /// <summary>
+    /// The animal packs in his shop; made with the population.
+    /// </summary>
+    PackStock? _packs;
+
+    /// <summary>
     /// One check: places him while Mourn is loaded and he is not in the world yet, holds his loaded squad, keeps him at the bar and his stock in the
     /// pen.
     /// </summary>
@@ -335,6 +341,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
 
         KeepAtBar(world, trader, place);
         KeepStock(world, squad, place, trader, purpose);
+        (_packs ??= new PackStock(population.Data, log)).Top(squad);
     }
 
     /// <summary>

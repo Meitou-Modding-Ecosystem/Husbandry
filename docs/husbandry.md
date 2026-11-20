@@ -40,7 +40,7 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
 ## The Beastmaster of Mourn
 
 A Western Hive soldier drone, the **Hive Beastmaster**, stands in Mourn's bar and sells garru, crabs and bonedogs, a male and a female of each,
-kept in a pen behind the bar.
+kept in a pen behind the bar, and every animal pack.
 
 - **Where**: Mourn is TOWN `963-gamedata.base` (editor name "Capital"); its bar is the home of the barman's squad `Bar Mourn`
   (`95554-Mourn.mod`), else the town's first bar. The town's housing picks that building, so the mod finds it in the running world, once
@@ -59,7 +59,12 @@ kept in a pen behind the bar.
   Beastmaster is not replaced.
 - **Talk**: his conversation (DIALOGUE `5-Husbandry.mod`) is a hiver's talk of breaking wild beasts for the Hive; **Show me your beasts.**
   runs DA 48 CHOOSE_ANIMALS_BUYING, the game's animal buying window, which lists his squad's animals within 2304 units (engine
-  docs/game/animals.md "Buying animals"). Prices are the game's: 14000 x (age + 0.1).
+  docs/game/animals.md "Buying animals"). Prices are the game's: 14000 x (age + 0.1). **Show me your packs.** runs DA 1 TRADE, his shop.
+- **Packs**: his squad is a trader's (`is trader`, he and it) with one empty VENDOR_LIST (`19-Husbandry.mod`), `vendors fill total amount` 0
+  and `vendors refresh time` 24, so the engine gives it a squad shop that fills with nothing and a purse of 3000 (the squad shop minimum). After
+  each fill the mod adds one of every animal pack the stock lacks: every CONTAINER whose `races` names a race of an ANIMAL_CHARACTER (only such
+  a list lets an animal wear an item, the engine's `RaceLimiter`), found in the merged data at his first check and logged, so other mods'
+  packs are sold too. Prices are the game's. A day later the fill clears the stock (goods sold to him too) and the packs come back.
 - **Stock**: six places, a female and a male each of Garru (`42201-rebirth.mod`), Crab (`56088-Newwworld.mod`) and Dog, the bonedog
   (`3979-gamedata.base`). Each is made with `PopulationSystem.SpawnAnimal` into his squad on a ring 20 units round the pen's centre, aged 0.8
   (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back; one inside
@@ -97,6 +102,7 @@ in its save; the hitches go back on their characters at the first tick after a l
 ## Data file
 
 `Husbandry.mod`, record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`,
-without its cage function, category FARMING), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 16 its lines and the DA 48 action. A
-`.mod` generated before 0.2.0 lacks 3 to 16: generate it again. Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
+without its cage function, category FARMING), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1
+actions, 19 his shop's vendor list. A `.mod` generated before 0.2.0 lacks 3 to 19, one before 0.2.5 lacks 17 to 19 (no pack shop; logged):
+generate it again. Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
 the Play project does it on F5. Untested in play.
