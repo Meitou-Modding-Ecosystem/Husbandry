@@ -16,11 +16,11 @@ public static class HusbandryData
     public const string FileName = "Husbandry.mod";
 
     /// <summary>
-    /// The record ids: the research, the post, the Beastmaster's CHARACTER, his SQUAD_TEMPLATE and his conversation's DIALOGUE (its lines follow,
-    /// <see cref="TraderData"/>).
+    /// The record ids: the research, the post, the Beastmaster's CHARACTER, his SQUAD_TEMPLATE, his conversation's DIALOGUE (its lines follow,
+    /// <see cref="TraderData"/>) and his shop's VENDOR_LIST.
     /// </summary>
     public const string Research = "1-" + FileName, Post = "2-" + FileName, Trader = "3-" + FileName, TraderSquad = "4-" + FileName,
-        Conversation = "5-" + FileName;
+        Conversation = "5-" + FileName, PackList = "19-" + FileName;
 
     /// <summary>
     /// The game's building the post is copied from: its string id, else its name.

@@ -33,6 +33,9 @@ public sealed class HusbandryMod : IMod
         if (c.Data.Find(HusbandryData.TraderSquad) is null)
             c.LogError("Husbandry.mod has no Beastmaster: generate it again (docs/husbandry.md \"Data file\").");
 
+        if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.PackList) is null)
+            c.LogError("Husbandry.mod has no Beastmaster shop: generate it again (docs/husbandry.md \"Data file\").");
+
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         c.AddJob(Hitches.Kind);
         c.AddSystem("husbandry", ctx => _latest = new HusbandrySystem(ctx, Settings, c.RngPurpose, c.Log), SystemAnchor.End);
