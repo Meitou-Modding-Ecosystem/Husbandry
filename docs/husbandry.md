@@ -43,11 +43,12 @@ kept in a pen behind the bar.
 
 - **Where**: Mourn is TOWN `963-gamedata.base` (editor name "Capital"); its bar is the home of the barman's squad `Bar Mourn`
   (`95554-Mourn.mod`), else the town's first bar. The town's housing picks that building, so the mod finds it in the running world, once
-  Mourn's zone is loaded and the bar's doors are registered. His spot is the bar's first general node. The pen's centre lies on the line from
-  the doors' average through the bar's origin, 90 units past the doors' distance, turned up to 75 degrees or pushed up to 200 units further
-  until the ground within 30 units of it is open: walkable, with the highest walkable surface at most 15 units over the terrain (Observed in
-  Mourn, 2026-11-19: the bar has doors on more than one side, so their average sits at its middle and the first spot lay on its roof, 55 over
-  the street). Pen radius 50.
+  Mourn's zone is loaded and the bar's doors are registered. His spot is the bar's first general node. The bar's floor is its lowest door's
+  height. The pen's centre is fixed in the bar's frame: 56 units along its facing and 154 to its left, the ground behind the bar where a beak
+  thing stood in play (Observed, Matthew's save 2026-11-19: 45 and 123, 46 under the floor), pushed a quarter further out. When the ground
+  within 30 units of it is not open, the spot is turned round the bar by up to 90 degrees or pushed up to 80 units further. Open ground is
+  walkable with the highest walkable surface at most 15 units over the bar's floor. Mourn lies in a pit, its roofs about level with the
+  terrain round it (Observed, 2026-11-19: roof at 1100, floor at 1033), so a test against the terrain let stock onto the roof. Pen radius 50.
 - **Him**: CHARACTER `3-Husbandry.mod`, a copy of the game's Western Hive "Soldier Drone" (`42196-rebirth.mod`) in Masterwork (armour grade
   5) Crab Armour and Crab Trousers, a Hiver Chain Shirt and a Naginata of Cross make (its only model, Meitou, is the top grade; a soldier
   drone wears no hat or shoes), combat skills 80, strength 75. Squad `4-Husbandry.mod`: him alone, Western Hive, no AI package. The mod adds
@@ -61,7 +62,7 @@ kept in a pen behind the bar.
 - **Stock**: six places, a female and a male each of Garru (`42201-rebirth.mod`), Crab (`56088-Newwworld.mod`) and Dog, the bonedog
   (`3979-gamedata.base`). Each is made with `PopulationSystem.SpawnAnimal` into his squad on a ring 20 units round the pen's centre, aged 0.8
   (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back; one inside
-  strolls now and then; one standing more than 15 units over the terrain (up on a building) is put back on its ring spot.
+  strolls now and then; one standing more than 15 units over the bar's floor (on its roof or upper floor) is put back on its ring spot.
 - **Buying**: the window makes the bought animals the player's (the game's recruit). At the next check (once a game second) the mod sees the
   animal has become the player's and orders it to follow the player character nearest the Beastmaster (the buyer, who stands talking to him),
   so it walks out of the pen with its new squad. Its place fills again 24 game hours later. A place whose animal is gone without being sold (it

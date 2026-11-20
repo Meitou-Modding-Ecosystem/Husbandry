@@ -132,24 +132,21 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         cold.Engaged = true;
         if (!Idle(world, at, cold)) return;
 
-        if (Stranded(world, at)) PutAt(world, at, Ground(world, StockSpot(world, place.Pen, Slots.IndexOf(slot))));
-        else Pen(world, at, place.Pen, purpose);
+        if (Stranded(world, at, place)) PutAt(world, at, Ground(world, StockSpot(world, place, Slots.IndexOf(slot)), place));
+        else Pen(world, at, place, purpose);
     }
 
     /// <summary>
-    /// Whether a penned animal stands up on a building (a roof or an upper floor, where a pen placed by an older version put the stock), from where it
-    /// cannot walk down into the pen.
+    /// Whether a penned animal stands above the bar's floor (on its roof or upper floor, where a pen placed by an older version put the stock), from
+    /// where it cannot walk down into the pen.
     /// </summary>
-    static bool Stranded(World world, int at)
-    {
-        var pos = world.Characters.Next[at].Position;
-        return pos.Y - world.Walkability.TerrainHeight(pos.X, pos.Z) > MournBar.GroundSlack;
-    }
+    static bool Stranded(World world, int at, BarPlace place) => world.Characters.Next[at].Position.Y > place.Floor + MournBar.GroundSlack;
 
     /// <summary>
-    /// A point of the ground at a spot.
+    /// The ground at a spot of the pen: its surface nearest the bar's floor, not a roof over it.
     /// </summary>
-    static Vector3 Ground(World world, Vector2 spot) => new(spot.X, world.Walkability.TerrainHeight(spot.X, spot.Y), spot.Y);
+    static Vector3 Ground(World world, Vector2 spot, BarPlace place) =>
+        new(spot.X, world.Walkability.GroundHeight(spot.X, spot.Y, place.Floor), spot.Y);
 
     /// <summary>
     /// A stocked animal the buying window made the player's: it follows the player character nearest the Beastmaster (the buyer stands talking to
@@ -207,7 +204,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     void Fill(World world, Squad squad, StockSlot slot, BarPlace place)
     {
         var (name, record) = Kinds[slot.Kind];
-        var spot = StockSpot(world, place.Pen, Slots.IndexOf(slot));
+        var spot = StockSpot(world, place, Slots.IndexOf(slot));
         var id = population?.SpawnAnimal(world, record, squad.Id, spot, StockAge) ?? CharacterId.None;
         if (id.IsNone || !world.Characters.TryResolveNext(id, out int at) || world.Characters.Cold(at) is not { PortraitSerial: { } serial } cold)
         {
@@ -226,18 +223,19 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     /// <summary>
     /// Where a place's new animal is put: its own point on a ring round the pen's centre when open ground, else the centre.
     /// </summary>
-    static Vector2 StockSpot(World world, Vector2 pen, int index)
+    static Vector2 StockSpot(World world, BarPlace place, int index)
     {
         float angle = index * MathF.Tau / 6;
-        var spot = pen + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * StockRing;
-        return MournBar.OpenGround(world, spot) ? spot : pen;
+        var spot = place.Pen + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * StockRing;
+        return MournBar.OpenGround(world, spot, place.Floor) ? spot : place.Pen;
     }
 
     /// <summary>
     /// Walks an idle animal back into the pen when it strayed, or now and then to another spot inside.
     /// </summary>
-    static void Pen(World world, int at, Vector2 pen, RngPurpose purpose)
+    static void Pen(World world, int at, BarPlace place, RngPurpose purpose)
     {
+        var pen = place.Pen;
         var pos = world.Characters.Next[at].Position;
         float away = Vector2.Distance(new Vector2(pos.X, pos.Z), pen);
         ulong roll = Rng.Hash(world.Seed, world.Characters.Cold(at)!.PortraitSerial ?? (ulong)at, purpose, (ulong)world.Tick);
@@ -246,7 +244,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         float angle = Rng.Float(Rng.Hash(roll, 1, 0, 1)) * MathF.Tau;
         float r = MathF.Sqrt(Rng.Float(Rng.Hash(roll, 1, 0, 2))) * PenRadius * 0.5f;
         var goal = pen + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r;
-        if (!MournBar.OpenGround(world, goal)) goal = pen;
+        if (!MournBar.OpenGround(world, goal, place.Floor)) goal = pen;
 
         TaskStart.Walk(world, at, goal, SpeedMode.Walk, TaskType.MoveOnFreeWill, TaskSource.Npc);
     }
