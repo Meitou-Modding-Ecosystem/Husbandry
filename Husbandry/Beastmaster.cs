@@ -125,7 +125,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         var cold = world.Characters.Cold(at)!;
         if (cold.IsPlayer)
         {
-            Sold(world, slot, at, trader);
+            Sold(world, slot, at, trader, place);
             return;
         }
 
@@ -149,19 +149,48 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         new(spot.X, world.Walkability.GroundHeight(spot.X, spot.Y, place.Floor), spot.Y);
 
     /// <summary>
-    /// A stocked animal the buying window made the player's: it follows the player character nearest the Beastmaster (the buyer stands talking to
-    /// him), its sex stays set, and its place is filled a day later.
+    /// A stocked animal the buying window made the player's: it is put on the ground outside the bar's door (from the pen behind the bar no path
+    /// to the buyer is sure), follows the player character nearest the Beastmaster (the buyer stands talking to him), its sex stays set, and its
+    /// place is filled a day later.
     /// </summary>
-    void Sold(World world, StockSlot slot, int at, int trader)
+    void Sold(World world, StockSlot slot, int at, int trader, BarPlace place)
     {
         var table = world.Characters;
         table.Cold(at)!.Engaged = false;
+        PutAt(world, at, place.Front);
         slot.Serial = 0;
         slot.RefillAt = world.GameHours + RestockHours;
         if (Buyer(world, trader) is not { } buyer) return;
 
         world.Commands.Enqueue(new FollowOrder([table.IdOf(at)], table.IdOf(buyer)) { Tick = world.Tick + 1 });
         log($"husbandry: {table.Cold(at)!.Name} was bought and follows {table.Cold(buyer)!.Name}");
+    }
+
+    /// <summary>
+    /// How near the bar's door a player's animal up on the bar is brought down, and how high over the bar's floor it may stand, in game units (the
+    /// bar's roof is some 70 over its floor).
+    /// </summary>
+    const float RescueReach = 300, RescueHeight = 150;
+
+    /// <summary>
+    /// Puts the player's animals bought from him (their sex is in his table) that are stranded up on the bar (its roof or upper floor, where an
+    /// older version penned the stock and sold it from) on the ground outside its door, out of a fight.
+    /// </summary>
+    void BringDown(World world, BarPlace place)
+    {
+        var table = world.Characters;
+        var front = new Vector2(place.Front.X, place.Front.Z);
+        for (int s = 0; s < table.HighWater; s++)
+        {
+            if (!table.Next[s].Alive || table.Cold(s) is not { IsPlayer: true, InCombat: false, Medical.Dead: false } c) continue;
+            if (c.PortraitSerial is not { } serial || !sexes.Assigned.ContainsKey(serial)) continue;
+
+            var pos = table.Next[s].Position;
+            float over = pos.Y - place.Floor;
+            if (over <= MournBar.GroundSlack || over > RescueHeight || Vector2.Distance(new Vector2(pos.X, pos.Z), front) > RescueReach) continue;
+
+            PutAt(world, s, place.Front);
+        }
     }
 
     /// <summary>
@@ -297,6 +326,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     {
         if (population is null || Place(world) is not { } place) return;
 
+        BringDown(world, place);
         var platoon = world.Platoons.All.FirstOrDefault(p => p.ModTag == Tag) ?? Spawn(world, place);
         if (platoon is null) return;
 
