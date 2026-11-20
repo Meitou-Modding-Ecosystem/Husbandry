@@ -27,7 +27,8 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
 - **Sex**: the game gives animals none (no ANIMAL_CHARACTER has `female chance`; Meitou draws every animal male, engine docs/game/animals.md
   "Breeding and eggs"), so the mod decides it half and half from the character's portrait serial, which is saved with the character. A character
   loaded from a save that has no serial gets a new one on load, so its sex is fixed from the first save made with Meitou. An animal the
-  Beastmaster sells keeps the sex it was sold as instead (kept by serial in the sidecar).
+  Beastmaster sells keeps the sex it was sold as instead (kept by serial in the sidecar). The character panel shows it on every animal's Age line ("Adult (female)",
+  and a "Sex:" row in its tooltip): a Harmony postfix on the engine's `HudTips.Lines`, keeping the panel's number of lines.
 - **Same kind**: same RACE. Pack Beast and Garru share Garru; Domesticated Bull and Pack / Wild Bull are different races. Robot races (Iron and
   Security Spiders, the Cleanser) never breed.
 - **Tries**: each hitched adult female with an adult male of her race at the same post tries every **Days between tries** (default 3) game
