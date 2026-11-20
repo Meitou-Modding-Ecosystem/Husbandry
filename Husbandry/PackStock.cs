@@ -1,6 +1,6 @@
 using Meitou.Data;
 using Meitou.Data.Fcs;
-using Meitou.Simulation;
+using Meitou.Simulation.Factions;
 using Meitou.Simulation.Population;
 
 namespace Husbandry;
