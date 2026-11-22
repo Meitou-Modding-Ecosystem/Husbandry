@@ -1,7 +1,9 @@
 # Husbandry (content mod)
 
 Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; data file generator: `Husbandry.Data/`.
-Needs the engine's mod jobs and `PopulationSystem.SpawnAnimal` (MeitouClient fork PR #11; engine docs/modding.md "Mod jobs", "World hooks").
+Needs Meitou 0.22.2 or later (nightlies included), below 0.23 (`gameVersion`; code-mod API 3, for `World.GiveOrder`); built against the
+engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs and
+`PopulationSystem.SpawnAnimal` (engine docs/modding.md "Mod jobs", "World hooks").
 
 ## Setting up a ranch
 
@@ -54,7 +56,8 @@ kept in a pen behind the bar, and every animal pack.
   5) Crab Armour and Crab Trousers, a Hiver Chain Shirt and a Naginata of Cross make (its only model, Meitou, is the top grade; a soldier
   drone wears no hat or shoes), combat skills 80, strength 75. Squad `4-Husbandry.mod`: him alone, Western Hive, no AI package. The mod adds
   it with `PopulationSystem.SpawnPlatoon` behind the bar (tag `husbandry.beastmaster`, saved with the platoon), holds it
-  (`HoldPlatoon`), keeps him and his stock off the AI (`Engaged`) and walks him back to his spot whenever he stands idle away from it; more than 150 units from it and out of a fight he is put straight back
+  (`HoldPlatoon`, off screen only) and walks him back to his spot with a move order (`World.GiveOrder`, which holds him against his squad's
+  mind until he arrives; with no package he stands idle after) whenever he stands idle away from it; more than 150 units from it and out of a fight he is put straight back
   there (a failed walk can leave him across town). A killed
   Beastmaster is not replaced.
 - **Talk**: his conversation (DIALOGUE `5-Husbandry.mod`) is a hiver's talk of breaking wild beasts for the Hive; **Show me your beasts.**
@@ -67,8 +70,8 @@ kept in a pen behind the bar, and every animal pack.
   packs are sold too. Prices are the game's. A day later the fill clears the stock (goods sold to him too) and the packs come back.
 - **Stock**: six places, a female and a male each of Garru (`42201-rebirth.mod`), Crab (`56088-Newwworld.mod`) and Dog, the bonedog
   (`3979-gamedata.base`). Each is made with `PopulationSystem.SpawnAnimal` into his squad on a ring 20 units round the pen's centre, aged 0.8
-  (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back; one inside
-  strolls now and then; one standing more than 15 units over the bar's floor (on its roof or upper floor) is put back on its ring spot.
+  (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back (a move order, as his); one
+  inside strolls now and then; one standing more than 15 units over the bar's floor (on its roof or upper floor) is put back on its ring spot.
 - **Buying**: the window makes the bought animals the player's (the game's recruit). At the next check (once a game second) the mod sees the
   animal has become the player's, puts it on the ground 40 units outside the bar's lowest door (along the door's normal, away from the bar; 25
   when that is not open ground; no path from the pen to the buyer is sure) and orders it to follow the player character nearest the
