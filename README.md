@@ -7,6 +7,8 @@ Hitching posts and breeding for the player's animals in [MeitouClient](https://g
 - Turning `.glb` models (Meshy, Hi3D, Blender) into buildable structures, no FCS needed: [docs/structures.md](docs/structures.md).
 - Setting up the repos on your machine: [docs/local-development.md](docs/local-development.md).
 - Instructing agents on a change that spans repos: [docs/agents-across-repos.md](docs/agents-across-repos.md).
+- Agent rules for the engine pin, versions, CI and releases: [CLAUDE.md](CLAUDE.md) (same as `AGENTS.md`); step-by-step procedures:
+  `.claude/skills/meitou-engine-release`.
 
 ## Layout
 
