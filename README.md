@@ -10,8 +10,9 @@ Hitching posts and breeding for the player's animals in [MeitouClient](https://g
 
 ## Layout
 
-- `engine/`: MeitouClient as a git submodule, pinned to the engine commit the mod builds against. After a pull that moves it:
-  `git submodule update --init`.
+- `engine/`: MeitouClient as a git submodule, pinned to the engine commit the mod builds against. `git pull` does not move it: after
+  every pull run `powershell -ExecutionPolicy Bypass -File tools\Update-Local.ps1 -Clean -Build`
+  ([keep clones current](docs/local-development.md#keep-clones-current)).
 - `Husbandry/`: the mod's project and `meitou.json`. `Husbandry.Data/`: the generator that writes `Husbandry.mod` from the installed game
   (Play runs it).
 - `Play/`: one-click build, deploy and run.
