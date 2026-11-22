@@ -130,7 +130,6 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
             return;
         }
 
-        cold.Engaged = true;
         if (!Idle(world, at, cold)) return;
 
         if (Stranded(world, at, place)) PutAt(world, at, Ground(world, StockSpot(world, place, Slots.IndexOf(slot)), place));
@@ -157,7 +156,6 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     void Sold(World world, StockSlot slot, int at, int trader, BarPlace place)
     {
         var table = world.Characters;
-        table.Cold(at)!.Engaged = false;
         PutAt(world, at, place.Front);
         slot.Serial = 0;
         slot.RefillAt = world.GameHours + RestockHours;
@@ -244,7 +242,6 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         }
 
         cold.Name = $"{name} ({(slot.Female ? "female" : "male")})";
-        cold.Engaged = true;
         sexes.Assigned[serial] = slot.Female;
         slot.Serial = serial;
         slot.RefillAt = -1;
@@ -276,7 +273,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         var goal = pen + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r;
         if (!MournBar.OpenGround(world, goal, place.Floor)) goal = pen;
 
-        TaskStart.Walk(world, at, goal, SpeedMode.Walk, TaskType.MoveOnFreeWill, TaskSource.Npc);
+        Walk(world, at, Ground(world, goal, place));
     }
 
     #endregion
@@ -385,14 +382,12 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     }
 
     /// <summary>
-    /// Keeps him off the AI, walks him back to his spot in the bar whenever he stands idle away from it, and puts him there when he is far from it
+    /// Walks him back to his spot in the bar whenever he stands idle away from it, and puts him there when he is far from it
     /// out of a fight.
     /// </summary>
     static void KeepAtBar(World world, int trader, BarPlace place)
     {
         var cold = world.Characters.Cold(trader)!;
-        cold.Engaged = true;
-
         var at = world.Characters.Next[trader].Position;
         float away = Vector2.Distance(new Vector2(at.X, at.Z), new Vector2(place.Counter.X, place.Counter.Z));
         if (away > LostReach && !cold.InCombat && !Hitches.Down(cold))
@@ -403,8 +398,15 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
 
         if (away <= CounterReach || !Idle(world, trader, cold)) return;
 
-        TaskStart.Walk(world, trader, place.Counter, SpeedMode.Walk, TaskType.MoveOnFreeWill, TaskSource.Npc);
+        Walk(world, trader, place.Counter);
     }
+
+    /// <summary>
+    /// Walks one of his squad to a point with a move order, which holds the character against its squad's mind until it arrives; the mind takes it
+    /// back after (its package lists none, so it stands idle).
+    /// </summary>
+    static void Walk(World world, int slot, Vector3 point) =>
+        world.GiveOrder(world.Characters.IdOf(slot), TaskType.MoveCusOrdered, point: point);
 
     /// <summary>
     /// Stands a character at a point, on the floor nearest its height there, as the debug menu's teleport does.
