@@ -4,6 +4,7 @@ Hitching posts and breeding for the player's animals in [MeitouClient](https://g
 `husbandry`, no dependencies; what it does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.0-or-later.
 
 - Build and run locally with Visual Studio, VS Code or the terminal (this repo's engine or the installed launcher, deployed to the game): [docs/play.md](docs/play.md).
+- Turning `.glb` models (Meshy, Hi3D, Blender) into buildable structures, no FCS needed: [docs/structures.md](docs/structures.md).
 - Setting up the repos on your machine: [docs/local-development.md](docs/local-development.md).
 - Instructing agents on a change that spans repos: [docs/agents-across-repos.md](docs/agents-across-repos.md).
 
