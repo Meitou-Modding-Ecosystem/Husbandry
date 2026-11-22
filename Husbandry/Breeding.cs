@@ -9,7 +9,7 @@ namespace Husbandry;
 /// pup every <see cref="HusbandrySettings.DaysBetweenTries"/> game days, the first try that long after she is paired. The chance follows the
 /// hungrier of her and the best-fed male. A pup is born beside her: her record, aged <see cref="NewbornAge"/>, in her squad, hitched to her post.
 /// </summary>
-public sealed class Breeding(RngPurpose purpose, Action<string> log)
+public sealed class Breeding(RngPurpose purpose, Sexes sexes, Action<string> log)
 {
     /// <summary>
     /// A newborn's age (a "Pup" until 0.4).
@@ -44,10 +44,10 @@ public sealed class Breeding(RngPurpose purpose, Action<string> log)
         var paired = new HashSet<uint>();
         foreach (var group in Groups(hitched))
         {
-            var males = group.Where(h => !Hitches.Female(h.Cold, purpose)).ToList();
+            var males = group.Where(h => !sexes.Female(h.Cold)).ToList();
             if (males.Count == 0) continue;
 
-            foreach (var female in group.Where(h => Hitches.Female(h.Cold, purpose)))
+            foreach (var female in group.Where(h => sexes.Female(h.Cold)))
             {
                 uint serial = female.Cold.PortraitSerial!.Value;
                 paired.Add(serial);
@@ -118,10 +118,10 @@ public sealed class Breeding(RngPurpose purpose, Action<string> log)
     {
         var at = world.Characters.Next[mother.Slot].Position;
         var spot = new Vector2(at.X + BirthOffset, at.Z);
-        var pup = population?.SpawnAnimal(world, mother.Cold.RecordId, mother.Cold.SquadId, spot, NewbornAge) ?? CharacterId.None;
+        var pup = population?.SpawnIntoPlayerSquad(world, mother.Cold.SquadId, mother.Cold.RecordId, spot, NewbornAge) ?? CharacterId.None;
         if (pup.IsNone || !world.Characters.TryResolveNext(pup, out int slot) || world.Characters.Cold(slot) is not { } cold)
         {
-            Note($"{mother.Cold.Name} could not give birth: the squad is gone or the faction is full");
+            Note($"{mother.Cold.Name} could not give birth: the squad is gone or full, or the faction is full");
             return;
         }
 

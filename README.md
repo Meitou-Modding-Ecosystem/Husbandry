@@ -4,13 +4,17 @@ Hitching posts and breeding for the player's animals in [MeitouClient](https://g
 `husbandry`, no dependencies; what it does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.0-or-later.
 
 - Build and run locally with Visual Studio, VS Code or the terminal (this repo's engine or the installed launcher, deployed to the game): [docs/play.md](docs/play.md).
+- Turning `.glb` models (Meshy, Hi3D, Blender) into buildable structures, no FCS needed: [docs/structures.md](docs/structures.md).
 - Setting up the repos on your machine: [docs/local-development.md](docs/local-development.md).
 - Instructing agents on a change that spans repos: [docs/agents-across-repos.md](docs/agents-across-repos.md).
+- Agent rules for the engine pin, versions, CI and releases: [CLAUDE.md](CLAUDE.md) (same as `AGENTS.md`); step-by-step procedures:
+  `.claude/skills/meitou-engine-release`.
 
 ## Layout
 
-- `engine/`: MeitouClient as a git submodule, pinned to the engine commit the mod builds against. After a pull that moves it:
-  `git submodule update --init`.
+- `engine/`: MeitouClient as a git submodule, pinned to the engine commit the mod builds against. `git pull` does not move it: after
+  every pull run `powershell -ExecutionPolicy Bypass -File tools\Update-Local.ps1 -Clean -Build`
+  ([keep clones current](docs/local-development.md#keep-clones-current)).
 - `Husbandry/`: the mod's project and `meitou.json`. `Husbandry.Data/`: the generator that writes `Husbandry.mod` from the installed game
   (Play runs it).
 - `Play/`: one-click build, deploy and run.
