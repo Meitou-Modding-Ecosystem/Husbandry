@@ -1,3 +1,4 @@
+using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
 using Meitou.Simulation.Bodies;
 using Meitou.Simulation.Construction;
@@ -17,9 +18,14 @@ public readonly record struct Hitched(int Slot, CharacterCold Cold, BuildSite Po
 public static class Hitches
 {
     /// <summary>
-    /// The job's id (<see cref="ModJobKind.Id"/>).
+    /// The job's task type, claimed with <c>AddJobType</c> (Husbandry keeps task type number 4501; Bathhouse keeps 4401 to 4409).
     /// </summary>
-    public const string JobId = "husbandry.hitch";
+    public const TaskType Type = (TaskType)4501;
+
+    /// <summary>
+    /// The job's name in the jobs list (<c>AddJobType</c>).
+    /// </summary>
+    public const string Name = "Hitched";
 
     /// <summary>
     /// The age from which an animal is an adult: the game's own "Adult" label (below 0.4 "Pup", below 0.6 "Teen"); elders count too.
@@ -27,28 +33,29 @@ public static class Hitches
     public const float AdultAge = 0.6f;
 
     /// <summary>
-    /// The job as the engine offers it: on the Hitching Post, to animals.
+    /// The job as the engine offers it: on the Hitching Post, to animals (<c>AddJobOffer</c>).
     /// </summary>
-    public static ModJobKind Kind => new(JobId, HusbandryData.Post, "Hitch here", "Hitched", ModJobTakers.Animals);
+    public static ModJobOffer Offer => new(Type, [HusbandryData.Post], "Hitch here", ModJobTakers.Animals);
 
     /// <summary>
     /// The post a character is hitched to, or null.
     /// </summary>
-    public static string? PostOf(CharacterCold cold) => cold.ModJobs.Find(j => j.Kind == JobId)?.Site;
+    public static string? PostOf(CharacterCold cold) => cold.Jobs.Find(j => j.Type == Type)?.Site;
 
     /// <summary>
-    /// Hitches a character to a post (replacing any other post).
+    /// Hitches a character to a post: a job already held moves to the new post in its place in the list, else it is added last.
     /// </summary>
     public static void Hitch(CharacterCold cold, string post)
     {
-        cold.ModJobs.RemoveAll(j => j.Kind == JobId);
-        cold.ModJobs.Add(new ModJob(JobId, post));
+        int at = cold.Jobs.FindIndex(j => j.Type == Type);
+        if (at >= 0) cold.Jobs[at] = new PermaJob(Type, post);
+        else cold.Jobs.Add(new PermaJob(Type, post));
     }
 
     /// <summary>
     /// Unhitches a character.
     /// </summary>
-    public static void Unhitch(CharacterCold cold) => cold.ModJobs.RemoveAll(j => j.Kind == JobId);
+    public static void Unhitch(CharacterCold cold) => cold.Jobs.RemoveAll(j => j.Type == Type);
 
     /// <summary>
     /// The living hitched animals whose post still stands finished; a hitch on a post that is gone or unfinished is taken off.

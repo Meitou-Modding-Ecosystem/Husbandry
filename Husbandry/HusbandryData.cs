@@ -23,6 +23,16 @@ public static class HusbandryData
         Conversation = "5-" + FileName, PackList = "19-" + FileName;
 
     /// <summary>
+    /// The record number of the first stock SQUAD_TEMPLATE; one per kind of <see cref="Beastmaster.Kinds"/> follows in order.
+    /// </summary>
+    public const int FirstStockSquad = 20;
+
+    /// <summary>
+    /// The SQUAD_TEMPLATE of one stock animal of kind <paramref name="kind"/> (<see cref="Beastmaster.Kinds"/>).
+    /// </summary>
+    public static string StockSquad(int kind) => $"{FirstStockSquad + kind}-{FileName}";
+
+    /// <summary>
     /// The game's building the post is copied from: its string id, else its name.
     /// </summary>
     public const string ModelId = "18913-small_changes_otto.mod", ModelName = "Prisoner Pole";

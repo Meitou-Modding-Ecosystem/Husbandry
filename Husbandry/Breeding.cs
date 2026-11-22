@@ -118,10 +118,10 @@ public sealed class Breeding(RngPurpose purpose, Sexes sexes, Action<string> log
     {
         var at = world.Characters.Next[mother.Slot].Position;
         var spot = new Vector2(at.X + BirthOffset, at.Z);
-        var pup = population?.SpawnAnimal(world, mother.Cold.RecordId, mother.Cold.SquadId, spot, NewbornAge) ?? CharacterId.None;
+        var pup = population?.SpawnIntoPlayerSquad(world, mother.Cold.SquadId, mother.Cold.RecordId, spot, NewbornAge) ?? CharacterId.None;
         if (pup.IsNone || !world.Characters.TryResolveNext(pup, out int slot) || world.Characters.Cold(slot) is not { } cold)
         {
-            Note($"{mother.Cold.Name} could not give birth: the squad is gone or the faction is full");
+            Note($"{mother.Cold.Name} could not give birth: the squad is gone or full, or the faction is full");
             return;
         }
 
