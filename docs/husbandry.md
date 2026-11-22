@@ -2,14 +2,15 @@
 
 Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; data file generator: `Husbandry.Data/`.
 Needs Meitou 0.22.2 or later (nightlies included), below 0.23 (`gameVersion`; code-mod API 3, for `World.GiveOrder`); built against the
-engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs and
-`PopulationSystem.SpawnAnimal` (engine docs/modding.md "Mod jobs", "World hooks").
+engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs (`AddJobType`,
+`AddJobOffer`; task type 4501), `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
+"World hooks").
 
 ## Setting up a ranch
 
 1. Research **Animal Husbandry** (Core, level 1, no blueprint). It unlocks the **Hitching Post** (build menu, Farming).
 2. Build a post and an **Animal Feeder** (vanilla, research Item Storage) inside the pen, and stock the feeder with food.
-3. Select animals, right-click the post and choose **Hitch here**. Each one lists "Hitched: Hitching Post" in its jobs list; the X unhitches it.
+3. Select animals, right-click the post and choose **Hitch here**. Each one lists the "Hitched" job on the post in its jobs list; the X unhitches it.
 4. Keep the squad's **Feed Animals** option on: hitched animals walk to the feeder themselves when hungry (vanilla goal 243, food from storage in
    a town of the player's; the post creates a player town).
 
@@ -61,16 +62,17 @@ kept in a pen behind the bar, and every animal pack.
   there (a failed walk can leave him across town). A killed
   Beastmaster is not replaced.
 - **Talk**: his conversation (DIALOGUE `5-Husbandry.mod`) is a hiver's talk of breaking wild beasts for the Hive; **Show me your beasts.**
-  runs DA 48 CHOOSE_ANIMALS_BUYING, the game's animal buying window, which lists his squad's animals within 2304 units (engine
-  docs/game/animals.md "Buying animals"). Prices are the game's: 14000 x (age + 0.1). **Show me your packs.** runs DA 1 TRADE, his shop.
+  runs DA 48 CHOOSE_ANIMALS_BUYING, the game's animal buying window, which lists the animals of his faction and town within 3000 units
+  (his stock) and his squad's within 2304 (engine docs/game/animals.md "Buying animals"). Prices are the game's: 14000 x (age + 0.1). **Show me your packs.** runs DA 1 TRADE, his shop.
 - **Packs**: his squad is a trader's (`is trader`, he and it) with one empty VENDOR_LIST (`19-Husbandry.mod`), `vendors fill total amount` 0
   and `vendors refresh time` 24, so the engine gives it a squad shop that fills with nothing and a purse of 3000 (the squad shop minimum). After
   each fill the mod adds one of every animal pack the stock lacks: every CONTAINER whose `races` names a race of an ANIMAL_CHARACTER (only such
   a list lets an animal wear an item, the engine's `RaceLimiter`), found in the merged data at his first check and logged, so other mods'
   packs are sold too. Prices are the game's. A day later the fill clears the stock (goods sold to him too) and the packs come back.
 - **Stock**: six places, a female and a male each of Garru (`42201-rebirth.mod`), Crab (`56088-Newwworld.mod`) and Dog, the bonedog
-  (`3979-gamedata.base`). Each is made with `PopulationSystem.SpawnAnimal` into his squad on a ring 20 units round the pen's centre, aged 0.8
-  (adult), named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back (a move order, as his); one
+  (`3979-gamedata.base`). Each is a held platoon of its own (`SpawnPlatoon` from its SQUAD_TEMPLATE, `20-Husbandry.mod` to `22-Husbandry.mod`: the animal
+  alone, of his faction and home town, aged 0.8, adult; tagged `husbandry.stock.<place>`) on a ring 20 units round the pen's centre. Once its
+  platoon has loaded, the animal is named "Garru (female)" and so on, its sex kept by the mod. An idle one more than 50 units from the centre walks back (a move order, as his); one
   inside strolls now and then; one standing more than 15 units over the bar's floor (on its roof or upper floor) is put back on its ring spot.
 - **Buying**: the window makes the bought animals the player's (the game's recruit). At the next check (once a game second) the mod sees the
   animal has become the player's, puts it on the ground 40 units outside the bar's lowest door (along the door's normal, away from the bar; 25
@@ -99,13 +101,15 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 ## Save data
 
 The sidecar holds the hitches (portrait serial, post id), each paired female's next try (game hours), the sexes the mod set (portrait serial,
-female) and the Beastmaster's six stock places (portrait serial, refill hour), version 2; a version 1 sidecar loads with none of the last two. The engine keeps no mod jobs
-in its save; the hitches go back on their characters at the first tick after a load. Both are in the world's state hash.
+female) and the Beastmaster's six stock places (portrait serial, refill hour), version 2; a version 1 sidecar loads with none of the last two. The engine
+saves the hitch jobs too (as mod jobs of task type 4501); the sidecar's hitches go back on their characters at the first tick after a load, so
+saves from before 0.3.1 keep theirs. Both are in the world's state hash. A stock platoon is found again by its tag; a place whose animal is not
+found after a load adopts its platoon's animal again.
 
 ## Data file
 
 `Husbandry.mod`, record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`,
 without its cage function, category FARMING), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1
-actions, 19 his shop's vendor list. A `.mod` generated before 0.2.0 lacks 3 to 19, one before 0.2.5 lacks 17 to 19 (no pack shop; logged):
-generate it again. Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
+actions, 19 his shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog). A `.mod` generated before 0.2.0 lacks 3 to 19, one before
+0.2.5 lacks 17 to 19 (no pack shop; logged), one before 0.3.1 lacks 20 to 22 (no stock; logged): generate it again. Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
 the Play project does it on F5. Untested in play.

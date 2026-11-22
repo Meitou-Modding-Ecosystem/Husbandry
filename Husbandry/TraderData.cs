@@ -53,7 +53,7 @@ public static class TraderData
     public static IEnumerable<FcsRecord> Build(GameDatabase game)
     {
         var model = Model(game) ?? throw new InvalidOperationException($"The game data has no CHARACTER '{ModelName}'.");
-        return [CharacterRecord(game, model), SquadRecord(game), .. Conversation(), PackList()];
+        return [CharacterRecord(game, model), SquadRecord(game), .. Conversation(), PackList(), .. StockSquads(game)];
     }
 
     /// <summary>
@@ -125,6 +125,33 @@ public static class TraderData
         record.References["leader"] = [new FcsReference(HusbandryData.Trader, 1, 0, 0)];
         record.References["faction"] = Links(game, [Beastmaster.Faction], 0, 0);
         return record;
+    }
+
+    /// <summary>
+    /// One SQUAD_TEMPLATE per stock kind (<see cref="HusbandryData.StockSquad"/>): that one animal alone, leading itself, of the Western Hive, aged
+    /// <see cref="Beastmaster.StockAge"/> (an animal's age is the entry's third value / 100 - 0.1 with no random part), with no AI package: the mod
+    /// holds and walks it.
+    /// </summary>
+    static IEnumerable<FcsRecord> StockSquads(GameDatabase game)
+    {
+        int age = (int)MathF.Round((Beastmaster.StockAge + 0.1f) * 100);
+        foreach (var (kind, (name, animal)) in Beastmaster.Kinds.Index())
+        {
+            var record = HusbandryData.New(HusbandryData.StockSquad(kind), FcsRecordType.SquadTemplate, $"Beastmaster's {name}");
+            foreach (string flag in OffFlags) record.Bools[flag] = false;
+
+            record.Bools["dont multiply"] = true;
+            record.Floats["animal age random"] = 0;
+            record.Ints["num random chars"] = 0;
+            record.Ints["num random chars max"] = 0;
+            record.Bools["is trader"] = false;
+            record.Strings["building name"] = "";
+            record.Strings["layout interior"] = "";
+            record.Strings["layout exterior"] = "";
+            record.References["animals"] = [.. Links(game, [animal], 1, 0).Select(l => l with { Value2 = age })];
+            record.References["faction"] = Links(game, [Beastmaster.Faction], 0, 0);
+            yield return record;
+        }
     }
 
     /// <summary>

@@ -39,7 +39,7 @@ public sealed class StockSlot(int kind, bool female)
 /// <summary>
 /// The Hive Beastmaster of Mourn (docs/husbandry.md "The Beastmaster of Mourn"): a Western Hive soldier drone in the town's bar who sells garru,
 /// crabs and bonedogs, a male and a female of each, kept in a pen behind the bar. His conversation's "Show me your beasts" opens the game's own
-/// animal buying window (DA 48), which lists his squad's animals and makes the bought ones the player's; the mod then walks each bought animal out
+/// animal buying window (DA 48), which lists his town's animals of his faction (each stock animal is a held platoon of its own) and makes the bought ones the player's; the mod then walks each bought animal out
 /// of the pen to follow the buyer, and fills the empty place a day later. "Show me your packs" opens his shop of animal packs
 /// (<see cref="PackStock"/>). Serial steps only.
 /// </summary>
@@ -58,7 +58,8 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     ];
 
     /// <summary>
-    /// The age of his stock: adults (the game's "Adult" from 0.6), so a bought pair can breed at once.
+    /// The age of his stock: adults (the game's "Adult" from 0.6), so a bought pair can breed at once. Set in each kind's SQUAD_TEMPLATE
+    /// (<see cref="TraderData"/>).
     /// </summary>
     public const float StockAge = 0.8f;
 
@@ -90,15 +91,24 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     /// <summary>
     /// Keeps his stock: notes the animals sold and sends them to the buyer, walks strays back into the pen, fills empty places that are due.
     /// </summary>
-    void KeepStock(World world, Squad squad, BarPlace place, int trader, RngPurpose purpose)
+    void KeepStock(World world, BarPlace place, int trader, RngPurpose purpose)
     {
         var found = Find(world);
         foreach (var slot in Slots)
         {
+            HoldStock(world, Slots.IndexOf(slot));
             if (slot.Serial != 0 && found.TryGetValue(slot.Serial, out int at)) Keep(world, slot, at, trader, place, purpose);
             else if (slot.Serial != 0) Lost(slot);
-            if (slot.Serial == 0 && world.GameHours >= slot.RefillAt) Fill(world, squad, slot, place);
+            if (slot.Serial == 0 && world.GameHours >= slot.RefillAt) Fill(world, slot, place);
         }
+    }
+
+    /// <summary>
+    /// Holds a place's platoon, when it has one, so the engine never moves or removes it.
+    /// </summary>
+    static void HoldStock(World world, int index)
+    {
+        if (world.Platoons.All.FirstOrDefault(p => p.ModTag == StockTag(index)) is { } platoon) PopulationSystem.HoldPlatoon(world, platoon.Id, true);
     }
 
     /// <summary>
@@ -227,21 +237,78 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     }
 
     /// <summary>
-    /// Puts a new animal of the place's kind and sex in the pen, in his squad, named for both ("Garru (female)").
+    /// The tag that finds a place's platoon again after a load (<see cref="Platoon.ModTag"/>).
     /// </summary>
-    void Fill(World world, Squad squad, StockSlot slot, BarPlace place)
+    public static string StockTag(int index) => $"husbandry.stock.{index}";
+
+    /// <summary>
+    /// Fills an empty place: adopts the living animal of its platoon once that platoon has loaded, else adds the platoon (one animal of the place's
+    /// kind from its SQUAD_TEMPLATE, of his faction and town, so the buying window lists it as his town's animal) on the place's spot. A loaded
+    /// platoon with no living animal is taken out, and a new one added at the next check.
+    /// </summary>
+    void Fill(World world, StockSlot slot, BarPlace place)
     {
-        var (name, record) = Kinds[slot.Kind];
-        var spot = StockSpot(world, place, Slots.IndexOf(slot));
-        var id = population?.SpawnAnimal(world, record, squad.Id, spot, StockAge) ?? CharacterId.None;
-        if (id.IsNone || !world.Characters.TryResolveNext(id, out int at) || world.Characters.Cold(at) is not { PortraitSerial: { } serial } cold)
+        int index = Slots.IndexOf(slot);
+        if (world.Platoons.All.FirstOrDefault(p => p.ModTag == StockTag(index)) is not { } platoon)
         {
-            slot.RefillAt = world.GameHours + 1;
-            log($"husbandry: the Beastmaster could not stock a {name} (no such animal record?); trying again in an hour");
+            SpawnStock(world, slot, place, index);
             return;
         }
 
-        cold.Name = $"{name} ({(slot.Female ? "female" : "male")})";
+        if (platoon.SquadId < 0 || world.Squads.Find(platoon.SquadId) is not { } squad) return;
+
+        if (Animal(world, squad) is { } at) Adopt(world, slot, at);
+        else population!.DespawnPlatoon(world, platoon.Id);
+    }
+
+    /// <summary>
+    /// Adds a place's platoon on its spot and holds it; tried again an hour later when that fails.
+    /// </summary>
+    void SpawnStock(World world, StockSlot slot, BarPlace place, int index)
+    {
+        int faction = population!.Data.FactionIndex(Faction);
+        var spot = StockSpot(world, place, index);
+        string template = HusbandryData.StockSquad(slot.Kind);
+        int id = faction < 0 ? -1 : population.SpawnPlatoon(world, faction, template, place.Site.Index, spot, 0, SpawnSpread);
+        if (world.Platoons.Find(id) is not { } platoon)
+        {
+            slot.RefillAt = world.GameHours + 1;
+            log($"husbandry: the Beastmaster could not stock a {Kinds[slot.Kind].Name} (is Husbandry.mod generated again?); trying again in an hour");
+            return;
+        }
+
+        platoon.ModTag = StockTag(index);
+        PopulationSystem.HoldPlatoon(world, platoon.Id, true);
+    }
+
+    /// <summary>
+    /// How far from its spot a place's platoon may be put.
+    /// </summary>
+    const float SpawnSpread = 2;
+
+    /// <summary>
+    /// The living animal of a stock squad that is not the player's yet; null when none.
+    /// </summary>
+    static int? Animal(World world, Squad squad)
+    {
+        var table = world.Characters;
+        foreach (var id in squad.Members)
+        {
+            if (!table.TryResolveNext(id, out int s) || !table.Next[s].Alive) continue;
+            if (table.Cold(s) is { Medical.Dead: false, IsPlayer: false, PortraitSerial: not null } c && SquadRegistry.IsAnimal(c)) return s;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Makes a stock platoon's animal the place's, named for its kind and sex ("Garru (female)").
+    /// </summary>
+    void Adopt(World world, StockSlot slot, int at)
+    {
+        var cold = world.Characters.Cold(at)!;
+        uint serial = cold.PortraitSerial!.Value;
+        cold.Name = $"{Kinds[slot.Kind].Name} ({(slot.Female ? "female" : "male")})";
         sexes.Assigned[serial] = slot.Female;
         slot.Serial = serial;
         slot.RefillAt = -1;
@@ -337,7 +404,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         if (platoon.SquadId < 0 || world.Squads.Find(platoon.SquadId) is not { } squad || Trader(world, squad) is not { } trader) return;
 
         KeepAtBar(world, trader, place);
-        KeepStock(world, squad, place, trader, purpose);
+        KeepStock(world, place, trader, purpose);
         (_packs ??= new PackStock(population.Data, log)).Top(squad);
     }
 
