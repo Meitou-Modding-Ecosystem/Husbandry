@@ -143,7 +143,10 @@ that material the data phase sets the capsule's `mesh`, `ground mesh` and `mater
   and the character is removed from the world. One capsule of a stack is filled (split off; on the ground when the inventory has no room).
 - **Throw**: right-click a knocked-out beast a capsule may catch and choose **Throw Beast Capsule**: the first selected character holding an
   empty capsule walks to within 300 units (30 m) of it (a move order, renewed every 2 s), plays the throw for 1 s and catches it as above
-  (`CapsuleThrows`). The throw is the game's COMBAT_TECHNIQUE `53666-rebirth.mod` "ma badpunch" (an overarm swing, played as a mod combat move)
+  (`CapsuleThrows`), except 20% of the time (`BreakFreeChance`, rolled from the world seed, the beast and the tick): the beast breaks free, its
+  KO timer ends and its vital parts (flesh − stun + rig, stun first) and blood come up to 1, just enough that it stands and fights; the capsule
+  stays empty. Where it lands a pink mist rises for 3 s (the game's `Poison_Gas_White` particle system, tinted; display only, drawn by
+  `CapsuleUi` from the landings the system queues). The throw is the game's COMBAT_TECHNIQUE `53666-rebirth.mod` "ma badpunch" (an overarm swing, played as a mod combat move)
   until the mod has a throw clip of its own. A throw ends with a line over the thrower when the beast gets up, is carried or leaves, the thrower
   is down or has no empty capsule left, or after 2 minutes. Throws in progress are not saved.
 - **Summon**: right-click a full capsule: the animal comes out 15 units from the character as a new member of the character's squad

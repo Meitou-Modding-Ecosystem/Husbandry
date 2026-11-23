@@ -1,3 +1,4 @@
+using System.Numerics;
 using Husbandry.Capsules;
 using Husbandry.Training;
 using Meitou.Data.Fcs;
@@ -56,6 +57,21 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     const string ThrowTechnique = "53666-rebirth.mod";
 
     /// <summary>
+    /// The mist where a thrown capsule lands: the game's white poison gas (EFFECT 62780-Newwworld.mod) tinted pink, for <see cref="MistSeconds"/>.
+    /// </summary>
+    const string MistEffect = "Poison_Gas_White";
+
+    /// <summary>
+    /// The mist's tint (rgb, 1 the full channel).
+    /// </summary>
+    static readonly Vector3 MistTint = new(1, 0.35f, 0.75f);
+
+    /// <summary>
+    /// How long the mist emits, in seconds.
+    /// </summary>
+    const float MistSeconds = 3;
+
+    /// <summary>
     /// Adds the mod's records, built from the merged game data (docs/husbandry.md "Data file"). Throws, so the game leaves the mod out, when the
     /// game lacks a record they copy.
     /// </summary>
@@ -76,7 +92,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
         _throwMove = c.Data.Find(ThrowTechnique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
-        c.AddUi(new CapsuleUi(() => _latest?.Throws));
+        c.AddUi(new CapsuleUi(() => _latest?.Throws, at => c.PlayEffect(MistEffect, at, MistSeconds, MistTint)));
         c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
