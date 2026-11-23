@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 using Meitou.Modding;
+using Husbandry.Training;
 using Meitou.Simulation;
+using Meitou.Simulation.Combat;
 using Meitou.Simulation.Population;
 
 namespace Husbandry;
@@ -15,7 +17,7 @@ public sealed record BreedNowCommand : SimCommand;
 /// Husbandry in one world (docs/husbandry.md): the pens kept and breeding run in serial steps, the hitches and breeding clocks saved in the mod's
 /// sidecar and hashed.
 /// </summary>
-public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
+public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, ICombatHitObserver
 {
     #region Ticking
 
@@ -65,6 +67,26 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
     readonly OutpostTraders _outposts;
 
     /// <summary>
+    /// The animals fetching for storages.
+    /// </summary>
+    readonly Fetching _fetching;
+
+    /// <summary>
+    /// The animals hunting from bone piles.
+    /// </summary>
+    readonly Hunting _hunting;
+
+    /// <summary>
+    /// The Tie up knock-downs.
+    /// </summary>
+    readonly TieUp _tieUp;
+
+    /// <summary>
+    /// The game hours at the last training and work check; NaN before the first.
+    /// </summary>
+    double _workedAt = double.NaN;
+
+    /// <summary>
     /// Ticks between the Beastmaster's checks (one game second).
     /// </summary>
     public const int TraderEveryTicks = 30;
@@ -91,6 +113,9 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         _breeding = new Breeding(purpose, _sexes, log);
         _beastmaster = new Beastmaster(_population, _sexes, log, TraderPost.Mourn);
         _outposts = new OutpostTraders(_population, _sexes, log);
+        _fetching = new Fetching(_population);
+        _hunting = new Hunting(_population, log);
+        _tieUp = new TieUp(purpose);
         TradeWindowGender.Sexes = _sexes;
     }
 
@@ -131,7 +156,9 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         foreach (var h in hitched)
             if ((h.Slot + world.Tick) % PenEveryTicks == 0) Pens.Keep(world, h, settings, _purpose);
 
+        _tieUp.Apply(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
+        if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
 
         if (!_breedNow && world.Tick % BreedEveryTicks != 0) return;
 
@@ -149,6 +176,23 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         _outposts.Run(world, _purpose);
         _traderView = _beastmaster.Describe(world) + _outposts.Describe(world);
     }
+
+    /// <summary>
+    /// The training and work check (docs/husbandry.md "Training"): the Training Posts, the jobs that need a skill and the skills that need none,
+    /// for the game hours since the last check.
+    /// </summary>
+    void RunTraining(World world, HusbandrySettings settings)
+    {
+        double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
+        _workedAt = world.GameHours;
+        TrainingPost.Run(world, settings, _purpose, hours);
+        Guarding.Run(world, settings, _purpose, hours);
+        _fetching.Run(world);
+        _hunting.Run(world, settings, _purpose);
+        PassiveSkills.Run(world, hours);
+    }
+
+    public void HitResolved(World world, in CombatHit hit) => _tieUp.Observe(world, hit);
 
     /// <summary>
     /// The debug view: each hitched animal with its post, race, sex, age, hunger and next try, then the latest tries.
@@ -310,6 +354,10 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
 
         _beastmaster.Hash(ref hasher);
         _outposts.Hash(ref hasher);
+        _fetching.Hash(ref hasher);
+        _hunting.Hash(ref hasher);
+        _tieUp.Hash(ref hasher);
+        hasher.Add(_workedAt);
         hasher.Add(_breedNow);
         hasher.Add(_pending?.Count ?? -1);
         HashHitches(ref hasher);

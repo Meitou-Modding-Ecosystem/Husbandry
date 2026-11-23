@@ -1,3 +1,4 @@
+using Husbandry.Training;
 using Meitou.Data.Fcs;
 using Meitou.Modding;
 using Meitou.Simulation;
@@ -39,9 +40,13 @@ public sealed class HusbandryMod : IMod
         if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.StockSquad(0)) is null)
             c.LogError("Husbandry.mod has no Beastmaster stock: generate it again (docs/husbandry.md \"Data file\").");
 
+        if (c.Data.Find(HusbandryData.Post) is not null && c.Data.Find(HusbandryData.TrainingPost) is null)
+            c.LogError("Husbandry.mod has no training buildings: generate it again (docs/husbandry.md \"Data file\").");
+
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         c.AddJobType(Hitches.Type, Hitches.Name);
         c.AddJobOffer(Hitches.Offer);
+        AddTraining(c);
         c.AddSystem("husbandry", ctx => _latest = new HusbandrySystem(ctx, Settings, c.RngPurpose, c.Log), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
@@ -52,6 +57,27 @@ public sealed class HusbandryMod : IMod
             return "Every paired female tries at the next check.";
         });
         LogAnimals(c);
+    }
+
+    /// <summary>
+    /// The animal skills (docs/husbandry.md "Training"): the skills and their effects, a training job per skill on the Training Post, and the work
+    /// jobs: Fetch on every storage, Guard on the Pet Station, Hunt on the Bone Pile.
+    /// </summary>
+    static void AddTraining(ModContext c)
+    {
+        AnimalSkills.Register(c);
+        foreach (var (index, _) in AnimalSkills.All.Index())
+        {
+            c.AddJobType(TrainingPost.TypeOf(index), TrainingPost.NameOf(index));
+            c.AddJobOffer(TrainingPost.OfferOf(index));
+        }
+
+        c.AddJobType(Fetching.Type, Fetching.Name);
+        c.AddJobOffer(Fetching.Offer(c.Data, c.Records((int)FcsRecordType.Building)));
+        c.AddJobType(Guarding.Type, Guarding.Name);
+        c.AddJobOffer(Guarding.Offer);
+        c.AddJobType(Hunting.Type, Hunting.Name);
+        c.AddJobOffer(Hunting.Offer);
     }
 
     /// <summary>
