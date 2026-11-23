@@ -537,3 +537,6 @@ macos-runtime/
 
 # Frameworks downloaded from meitou.lock.json
 deps/
+
+# The mod's own animation files (made by the Motion Lab, docs/husbandry.md "Beast Capsules")
+!Husbandry/items/animations/*.skeleton
