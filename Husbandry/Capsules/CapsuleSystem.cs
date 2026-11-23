@@ -16,7 +16,7 @@ namespace Husbandry.Capsules;
 /// <see cref="ItemInstance.ModTag"/> holds its key; the animals are saved in the mod's sidecar. The clicks only queue; the serial step does the
 /// work. Serial steps only.
 /// </summary>
-public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Action<string> log)
+public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, AnimalRegistry registry, Action<string> log)
 {
     /// <summary>
     /// The start of a full capsule's tag; its key follows.
@@ -112,10 +112,9 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
     }
 
     /// <summary>
-    /// The nearest animal within reach that may be caught: one of the player's, or another that is knocked out; not a robot, a leviathan, dead or
-    /// carried.
+    /// The nearest animal within reach that may be caught (<see cref="Catchable"/>).
     /// </summary>
-    static int? Target(World world, int user)
+    int? Target(World world, int user)
     {
         var table = world.Characters;
         var at = table.Next[user].Position;
@@ -136,14 +135,15 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
     }
 
     /// <summary>
-    /// Whether an animal may be caught now.
+    /// Whether an animal may be caught now: one of the player's whose race supports summoning, or a knocked-out one whose race supports taming
+    /// (docs/husbandry.md "Supported animals"); never one carried.
     /// </summary>
-    static bool Catchable(CharacterCold c)
+    bool Catchable(CharacterCold c)
     {
-        if (!SquadRegistry.IsAnimal(c) || c.Race is not { IsRobot: false } race || !c.CarriedBy.IsNone) return false;
-        if (race.Name.Contains("Leviathan", StringComparison.OrdinalIgnoreCase)) return false;
+        if (!c.CarriedBy.IsNone) return false;
+        if (c.IsPlayer) return registry.Supports(c, AnimalSupport.Summoning);
 
-        return c.IsPlayer || c.Medical is { Unconscious: true };
+        return c.Medical is { Unconscious: true } && registry.Supports(c, AnimalSupport.Taming);
     }
 
     /// <summary>

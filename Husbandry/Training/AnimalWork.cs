@@ -92,7 +92,7 @@ public static class AnimalWork
         if (AnimalSkills.Has(w.Cold, skill)) return false;
 
         w.Cold.Jobs.RemoveAll(j => j.Type == w.Type);
-        Say(world, w.Slot, $"Needs {TrainingPost.Short(skill)} {AnimalSkills.Unlocked:0}: train it at a Training Post");
+        Say(world, w.Slot, $"Needs {TrainableSkill.ShortOf(skill.Label)} {AnimalSkills.Unlocked:0}: train it at a Training Post");
         return true;
     }
 

@@ -81,11 +81,6 @@ public static class Hitches
     public static bool Adult(CharacterCold cold) => cold.Age >= AdultAge;
 
     /// <summary>
-    /// Whether an animal can breed at all: a living animal of a race that is no robot.
-    /// </summary>
-    public static bool Breeds(CharacterCold cold) => SquadRegistry.IsAnimal(cold) && cold.Race is { IsRobot: false };
-
-    /// <summary>
     /// The animal's hunger (3 full, 2 and more well fed, below 1 starving); 3 for one without a body.
     /// </summary>
     public static float Hunger(CharacterCold cold) => cold.Medical?.Hunger ?? 3;

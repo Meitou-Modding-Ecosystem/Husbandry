@@ -9,7 +9,7 @@ namespace Husbandry;
 /// pup every <see cref="HusbandrySettings.DaysBetweenTries"/> game days, the first try that long after she is paired. The chance follows the
 /// hungrier of her and the best-fed male. A pup is born beside her: her record, aged <see cref="NewbornAge"/>, in her squad, hitched to her post.
 /// </summary>
-public sealed class Breeding(RngPurpose purpose, Sexes sexes, Action<string> log)
+public sealed class Breeding(RngPurpose purpose, Sexes sexes, AnimalRegistry registry, Action<string> log)
 {
     /// <summary>
     /// A newborn's age (a "Pup" until 0.4).
@@ -59,11 +59,11 @@ public sealed class Breeding(RngPurpose purpose, Sexes sexes, Action<string> log
     }
 
     /// <summary>
-    /// The adults that can breed, grouped by post and race.
+    /// The adults that can breed (of a race that supports it: docs/husbandry.md "Supported animals"), grouped by post and race.
     /// </summary>
-    static IEnumerable<List<Hitched>> Groups(List<Hitched> hitched) =>
+    IEnumerable<List<Hitched>> Groups(List<Hitched> hitched) =>
         hitched
-            .Where(h => Hitches.Breeds(h.Cold) && Hitches.Adult(h.Cold) && h.Cold.PortraitSerial is not null && !Hitches.Down(h.Cold))
+            .Where(h => registry.Supports(h.Cold, AnimalSupport.Breeding) && Hitches.Adult(h.Cold) && h.Cold.PortraitSerial is not null && !Hitches.Down(h.Cold))
             .GroupBy(h => (h.Post.Id, h.Cold.Race!.StringId))
             .Select(g => g.ToList());
 

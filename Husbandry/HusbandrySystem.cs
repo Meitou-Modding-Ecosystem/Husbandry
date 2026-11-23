@@ -88,6 +88,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly CapsuleSystem _capsules;
 
     /// <summary>
+    /// The animal kinds and trainable skills (docs/husbandry.md "Supported animals").
+    /// </summary>
+    readonly AnimalRegistry _registry;
+
+    /// <summary>
     /// The game hours at the last training and work check; NaN before the first.
     /// </summary>
     double _workedAt = double.NaN;
@@ -110,19 +115,20 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// <summary>
     /// A system for one world.
     /// </summary>
-    public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, RngPurpose purpose, Action<string> log)
+    public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, AnimalRegistry registry, RngPurpose purpose, Action<string> log)
     {
         _settings = settings;
+        _registry = registry;
         _purpose = purpose;
         _population = context.Find<PopulationSystem>();
         _sexes = new Sexes(purpose);
-        _breeding = new Breeding(purpose, _sexes, log);
+        _breeding = new Breeding(purpose, _sexes, registry, log);
         _beastmaster = new Beastmaster(_population, _sexes, log, TraderPost.Mourn);
         _outposts = new OutpostTraders(_population, _sexes, log);
         _fetching = new Fetching(_population);
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
-        _capsules = new CapsuleSystem(_population, _sexes, log);
+        _capsules = new CapsuleSystem(_population, _sexes, registry, log);
         TradeWindowGender.Sexes = _sexes;
     }
 
@@ -209,7 +215,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     {
         double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
         _workedAt = world.GameHours;
-        TrainingPost.Run(world, settings, _purpose, hours);
+        TrainingPost.Run(world, _registry, settings, _purpose, hours);
         Guarding.Run(world, settings, _purpose, hours);
         _fetching.Run(world);
         _hunting.Run(world, settings, _purpose);
