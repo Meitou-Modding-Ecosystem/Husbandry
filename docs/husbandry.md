@@ -91,10 +91,17 @@ kept in a pen behind the bar, and every animal pack.
 Animals learn six skills, each a mod skill in the stats window (`husbandry.fetch`, `.guard`, `.hunt`, `.scout`, `.pack`, `.tieup`; labels
 "Beast: ..."), 0 until trained. A skill is **unlocked at 10**; below that the animal refuses the work that needs it (the job comes off with a
 floating "Needs Fetch 10" line). Skills train on the game's curve (`ModSkill.Gain`), are saved and hashed by the engine with the character.
-The **Animal Husbandry** research also unlocks the three buildings, copies of game buildings until their own models exist
-(art prompts: project file `husbandry-training/art-prompts.md`): Training Post `30-Husbandry.mod` (Training Dummy, else Prisoner Pole, no
-function), Pet Station `31-` (Bedroll, else Prisoner Pole, no function), Bone Pile `32-` (Wooden Barrel, keeps its storage). Checked once a game
-second; a job on a building that is gone or not the player's comes off.
+The **Animal Husbandry** research also unlocks the three buildings: Training Post `30-Husbandry.mod` (no function), Pet Station `31-` (no
+function), Bone Pile `32-` (a storage). Each wears its own model when the deployed data has it, else a game building's (the stand-in):
+Training Post on Training Dummy, else Prisoner Pole; Pet Station on Bedroll, else Prisoner Pole; Bone Pile on Wooden Barrel, else Storage:
+General. Build cost (and the pile's storage) always come from the stand-in (`TrainingData`). Checked once a game second; a job on a building
+that is gone or not the player's comes off.
+
+Own models: `Husbandry/Structures/training-post.glb`, `pet-station.glb`, `bone-pile.glb`, each with a `.json` (`research` `none`, so only the
+Husbandry building shows in the build menu). Play's structure import ([structures.md](structures.md)) turns each into a building, ids
+900200-, 900100- and 900000-Husbandry.mod (`Structures/ids.json`), which the data phase copies the look of. Heights 2.64 m, 1.62 m and 1.08 m:
+the art prompts' sizes (project file `husbandry-training/art-prompts.md`) times 1.2, as for the Bathhouse's pieces, the Pet Station by its
+width. Textures are shrunk to 2048. The release zip does not run the import yet, so released builds wear the stand-ins.
 
 - **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
@@ -123,8 +130,11 @@ Trips (fetch walks, hunts) are not saved: after a load a hunter starts resting a
 
 ## Beast Capsules
 
-ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats; a copy of the game's Fertiliser, else Leather or Hemp, until its own model exists). The
-Beastmasters keep 5 in their shops after each fill.
+ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats, one inventory cell; a copy of the game's Fertiliser, else Leather or Hemp, for its look in
+the world). Its inventory icon is `Husbandry/items/icons/husbandry-beastcapsule.png` (`tools/make-icons.py` from
+`concept-art/beastcapsule-inventory.png`; record `icon`, `auto icon image` false), which Play copies into the deployed mod (`PlayDeployAssets`).
+Its own model, `Husbandry/ItemModels/beast-capsule.glb` (11 cm, textures 1024), is kept out of `Structures`, which would make it a building;
+the import makes buildings only. The Beastmasters keep 5 in their shops after each fill.
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
   player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead or
