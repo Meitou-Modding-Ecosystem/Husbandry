@@ -1,6 +1,6 @@
 {
   "id": "husbandry",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "apiVersion": 3,
   "gameVersion": ">=0.22.2 <0.23.0",
   "assemblies": ["Husbandry.dll"],

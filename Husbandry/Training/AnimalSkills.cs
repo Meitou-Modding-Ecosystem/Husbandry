@@ -92,11 +92,10 @@ public static class AnimalSkills
     };
 
     /// <summary>
-    /// Registers the skills and the effects.
+    /// Registers the effects (the skills are registered as trainable: <see cref="HusbandryMod"/>).
     /// </summary>
     public static void Register(ModContext c)
     {
-        foreach (var skill in All) c.AddSkill(skill);
         c.AddStatusEffect(Guarding);
         c.AddStatusEffect(PackTrained);
         c.AddStatusEffect(ScoutTrained);

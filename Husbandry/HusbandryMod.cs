@@ -1,16 +1,21 @@
 using Husbandry.Training;
 using Meitou.Data.Fcs;
+using Meitou.Data.Gameplay.Ai;
+using Meitou.Data.Gameplay.Bodies;
 using Meitou.Modding;
 using Meitou.Simulation;
+using Meitou.Simulation.Bodies;
+using Meitou.Simulation.Production;
 
 namespace Husbandry;
 
 /// <summary>
 /// Husbandry's entry (docs/husbandry.md): the Hitching Post job, the system that keeps pens, breeds and runs the Beastmaster of Mourn (and any the
 /// debug menu puts at a settlement), the trade window's gender patch, the settings and the debug rows. Its records are added in the data phase
-/// from the loaded game's own (<see cref="HusbandryData"/>), so the shipped Husbandry.mod is empty.
+/// from the loaded game's own (<see cref="HusbandryData"/>), so the shipped Husbandry.mod is empty. Also the framework other mods extend with
+/// animal kinds and trainable skills (<see cref="IHusbandryApi"/>, docs/depending-on-husbandry.md).
 /// </summary>
-public sealed class HusbandryMod : IMod, IModDataPhase
+public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDependents
 {
     /// <summary>
     /// The mod's manifest id.
@@ -26,6 +31,16 @@ public sealed class HusbandryMod : IMod, IModDataPhase
     /// The system of the latest world, for the debug rows.
     /// </summary>
     HusbandrySystem? _latest;
+
+    /// <summary>
+    /// The animal kinds and trainable skills, Husbandry's own and its dependents'.
+    /// </summary>
+    readonly AnimalRegistry _registry = new();
+
+    /// <summary>
+    /// Every RACE of the loaded data, for the list of supported animals.
+    /// </summary>
+    List<(string StringId, string Name, bool Robot)> _races = [];
 
     /// <summary>
     /// Adds the mod's records, built from the merged game data (docs/husbandry.md "Data file"). Throws, so the game leaves the mod out, when the
@@ -46,31 +61,43 @@ public sealed class HusbandryMod : IMod, IModDataPhase
         c.AddJobOffer(Hitches.Offer);
         AddTraining(c);
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
-        c.AddSystem("husbandry", ctx => _latest = new HusbandrySystem(ctx, Settings, c.RngPurpose, c.Log), SystemAnchor.End);
+        c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
         c.AddDebugCommand("Husbandry: capsules", _ => Told(c, _latest?.CapsuleView ?? NoWorld));
+        c.AddDebugCommand("Husbandry: supported animals", _ => Told(c, string.Join(Environment.NewLine, _registry.Describe(_races))));
         c.AddDebugCommand(SettlementTraderRow.Label, d => Told(c, SettlementTraderRow.Run(d, _latest?.Outposts)), hasField: true);
         c.AddDebugCommand("Husbandry: try breeding now", d =>
         {
             d.Enqueue(new BreedNowCommand { Tick = d.Tick });
             return "Every paired female tries at the next check.";
         });
-        LogAnimals(c);
+        _races = Races(c);
+    }
+
+    /// <summary>
+    /// A world's system; the first ends registration and logs the list of supported animals.
+    /// </summary>
+    HusbandrySystem Build(ModContext c, SystemBuildContext context)
+    {
+        if (!_registry.Frozen)
+        {
+            _registry.Freeze();
+            c.Log("husbandry: supported animals: " + string.Join("; ", _registry.Describe(_races)));
+        }
+
+        return new HusbandrySystem(context, Settings, _registry, c.RngPurpose, c.Log);
     }
 
     /// <summary>
     /// The animal skills (docs/husbandry.md "Training"): the skills and their effects, a training job per skill on the Training Post, and the work
     /// jobs: Fetch on every storage, Guard on the Pet Station, Hunt on the Bone Pile.
     /// </summary>
-    static void AddTraining(ModContext c)
+    void AddTraining(ModContext c)
     {
         AnimalSkills.Register(c);
-        foreach (var (index, _) in AnimalSkills.All.Index())
-        {
-            c.AddJobType(TrainingPost.TypeOf(index), TrainingPost.NameOf(index));
-            c.AddJobOffer(TrainingPost.OfferOf(index));
-        }
+        var own = For(c);
+        foreach (var (index, skill) in AnimalSkills.All.Index()) own.AddSkill(skill, TrainingPost.TypeOf(index));
 
         c.AddJobType(Fetching.Type, Fetching.Name);
         c.AddJobOffer(Fetching.Offer(c.Data, c.Records((int)FcsRecordType.Building)));
@@ -81,22 +108,45 @@ public sealed class HusbandryMod : IMod, IModDataPhase
     }
 
     /// <summary>
-    /// The load scan: every animal kind in the merged data (mods' too) can be hitched, since the job takes any of the player's animals; the races
-    /// are logged, robots marked as not breeding.
+    /// Every RACE of the loaded data (mods' too): its string id, name and whether it is a robot.
     /// </summary>
-    static void LogAnimals(ModContext c)
-    {
-        var races = c.Records((int)FcsRecordType.AnimalCharacter)
-            .SelectMany(a => a.GetReferences("race").Take(1))
-            .Select(r => c.Data.Find(r.TargetStringId))
-            .OfType<Meitou.Data.GameRecord>()
-            .DistinctBy(r => r.StringId)
-            .OrderBy(r => r.Name, StringComparer.Ordinal)
-            .Select(r => r.GetBool("is robot") ? r.Name + " (robot: no breeding)" : r.Name)
+    static List<(string StringId, string Name, bool Robot)> Races(ModContext c) =>
+        c.Records((int)FcsRecordType.Race)
+            .Select(r => (r.StringId, r.Name, r.GetBool("is robot")))
             .ToList();
-        int kinds = c.Records((int)FcsRecordType.AnimalCharacter).Count();
-        c.Log($"husbandry: {kinds} animal kinds in {races.Count} races can be hitched: {string.Join(", ", races)}");
+
+    #region Framework
+
+    public IHusbandryRegistry For(ModContext c) => new Registration(this, c);
+
+    public AnimalSupport SupportOf(RaceData race) => _registry.SupportOf(race);
+
+    public IReadOnlyList<AnimalKind> Kinds => _registry.Kinds;
+
+    public IReadOnlyList<TrainableSkill> Skills => _registry.Skills;
+
+    public void DependentFailed(string modId) => _registry.Drop(modId);
+
+    /// <summary>
+    /// One mod's registrations: kinds go to the registry; a skill is registered with the game through the mod's own context, so it is the mod's.
+    /// </summary>
+    sealed class Registration(HusbandryMod husbandry, ModContext c) : IHusbandryRegistry
+    {
+        public void AddAnimal(AnimalKind kind) => husbandry._registry.AddKind(c.Id, kind);
+
+        public TrainableSkill AddSkill(ModSkill skill, TaskType trainingType, IReadOnlyCollection<string>? races = null)
+        {
+            if (husbandry._registry.Frozen) throw new InvalidOperationException("Husbandry takes registrations only in a mod's Initialize.");
+
+            string name = TrainableSkill.ShortOf(skill.Label);
+            c.AddSkill(skill);
+            c.AddJobType(trainingType, "Training " + name);
+            c.AddJobOffer(new ModJobOffer(trainingType, [HusbandryData.TrainingPost], "Train: " + name, ModJobTakers.Animals));
+            return husbandry._registry.AddSkill(c.Id, skill, trainingType, races);
+        }
     }
+
+    #endregion
 
     /// <summary>
     /// Logs a debug answer too (the status line shows only its start).

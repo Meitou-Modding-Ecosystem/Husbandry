@@ -63,3 +63,5 @@ A `needs-release` label means the merged change only reaches players after promo
 ## This repo
 
 - Husbandry (`Husbandry/`, records added in the data phase; docs `docs/husbandry.md`). No frameworks: `engine` pins an upstream release tag.
+- Husbandry is itself a framework: `IHusbandryApi` (animal kinds, trainable skills). A change to it updates `docs/depending-on-husbandry.md`,
+  `.claude/skills/husbandry-dependent` and the tests in `Husbandry.Tests/`, and bumps the minor version.

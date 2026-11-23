@@ -1,6 +1,7 @@
 # Husbandry (content mod)
 
 Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; its records are added at load (Data file).
+Other mods extend it with animal kinds and trainable skills: [depending-on-husbandry.md](depending-on-husbandry.md).
 Needs Meitou 0.22.2 or later (nightlies included), below 0.23 (`gameVersion`; code-mod API 3, for `World.GiveOrder`); built against the
 engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs (`AddJobType`,
 `AddJobOffer`; task types 4501, 4510 to 4515, 4520 to 4522), mod skills and status effects, `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
@@ -32,8 +33,8 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
   loaded from a save that has no serial gets a new one on load, so its sex is fixed from the first save made with Meitou. An animal the
   Beastmaster sells keeps the sex it was sold as instead (kept by serial in the sidecar). The character panel shows it on every animal's Age line ("Adult (female)",
   and a "Sex:" row in its tooltip): a Harmony postfix on the engine's `HudTips.Lines`, keeping the panel's number of lines.
-- **Same kind**: same RACE. Pack Beast and Garru share Garru; Domesticated Bull and Pack / Wild Bull are different races. Robot races (Iron and
-  Security Spiders, the Cleanser) never breed.
+- **Same kind**: same RACE. Pack Beast and Garru share Garru; Domesticated Bull and Pack / Wild Bull are different races. Only races that
+  support breeding (Supported animals) breed: by default not robots (Iron and Security Spiders, the Cleanser).
 - **Tries**: each hitched adult female with an adult male of her race at the same post tries every **Days between tries** (default 3) game
   days, the first try that long after she is paired; she loses her clock when unpaired. The chance follows the hungrier of her and the best-fed
   male: hunger 2 or more (well fed) 50 %, 1 to 2 (hungry) 25 %, below 1 (starving) 10 % (settings).
@@ -95,8 +96,9 @@ The **Animal Husbandry** research also unlocks the three buildings, copies of ga
 function), Pet Station `31-` (Bedroll, else Prisoner Pole, no function), Bone Pile `32-` (Wooden Barrel, keeps its storage). Checked once a game
 second; a job on a building that is gone or not the player's comes off.
 
-- **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"). The
-  animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and gains 1 a game hour, 2 while a standing person of the
+- **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
+  of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
+  with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and gains 1 a game hour, 2 while a standing person of the
   player's is within 200 units (about ten hours alone from 0 to 10).
 - **Fetch** (job 4520 "Fetching", offered on every storage building of the merged data as **Fetch for here**): an idle animal free of the
   player's orders carries the output of the player's finished machines within 3000 units of the storage that the storage takes, nearest machine
@@ -125,7 +127,8 @@ ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats; a copy of the game's Fertil
 Beastmasters keep 5 in their shops after each fill.
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
-  player's or is knocked out (unconscious), not a robot, a leviathan, dead or carried. The nearest goes in: what it carried drops where it lay,
+  player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead or
+  carried. The nearest goes in: what it carried drops where it lay,
   and the character is removed from the world. One capsule of a stack is filled (split off; on the ground when the inventory has no room).
 - **Summon**: right-click a full capsule: the animal comes out 15 units from the character as a new member of the character's squad
   (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod skill levels, fully healed; the capsule is empty again. No room in
@@ -133,10 +136,28 @@ Beastmasters keep 5 in their shops after each fill.
 - A full capsule's `ModTag` is `husbandry.capsule:<key>` (it stacks only with capsules of the same key); the animals are kept by key in the
   sidecar. Debug row **Husbandry: capsules** lists them.
 
-## Load scan
+## Supported animals
 
-Any of the player's animals can be hitched, those of other mods included: the job takes every animal (the engine's `SquadRegistry.IsAnimal`), so
-no list per kind is kept. At load the mod logs the animal kinds and races of the merged data, robots marked.
+Any of the player's animals can be hitched, those of other mods included: the job takes every animal (the engine's `SquadRegistry.IsAnimal`).
+What else an animal may do depends on its RACE:
+
+| Support | What it allows |
+| --- | --- |
+| Breeding | hitched adult pairs of the race breed at a Hitching Post |
+| Training | it learns skills at the Training Post |
+| Taming | a wild one, knocked out, can be caught in a Beast Capsule (summoned, it is the player's) |
+| Summoning | one of the player's own can go into a Beast Capsule and come out again |
+
+A race's support is the last registration naming its string id, else the last naming its name (without case), else:
+
+| Race | Support | Why |
+| --- | --- | --- |
+| Leviathan (built in) | breeding, training | too big for a capsule |
+| Any robot race (`is robot`) | training | it neither breeds nor fits a capsule |
+| Any other animal race | everything | |
+
+Other mods register kinds and skills ([depending-on-husbandry.md](depending-on-husbandry.md)). The full list for the loaded mods is debug row
+**Husbandry: supported animals**, and is logged once when the first world is built (`husbandry: supported animals: ...`).
 
 ## Settings
 
@@ -146,6 +167,7 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
 - **Husbandry: capsules**: each animal kept in a Beast Capsule.
+- **Husbandry: supported animals**: every RACE of the loaded data with what it supports (Supported animals).
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
   settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first
