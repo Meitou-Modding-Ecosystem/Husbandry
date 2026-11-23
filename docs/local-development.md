@@ -107,16 +107,46 @@ git -C "$Ashen\engine" fetch origin <engine branch>
 git -C "$Ashen\engine" checkout FETCH_HEAD
 ```
 
-- Don't commit the new engine pointer until the engine PR is merged into `fork`.
+- Don't commit the new engine pointer: engine pins move only to upstream release tags, so the change reaches this repo once upstream
+  releases it.
 - A mod that uses a framework also needs the framework rebuilt on that engine. Use the framework override above and check out the same
   engine branch in `$Rivalry\engine`.
-- Order to land it: engine PR into `fork`, then the framework PR moving `$Rivalry\engine`, then the mod PR moving its lock and `engine`.
+- Order to land it: engine PR into `fork`; after upstream releases it, the framework PR moving `$Rivalry\engine` to that release, then the
+  mod PR moving its lock and `engine`.
+
+## Switch the engine to play or test
+
+To play the latest upstream, a release or an engine branch, switch your `$Engine` clone with the script in any mod repo:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$Ashen\tools\Switch-Engine.ps1" -To Upstream -Path $Engine -Run
+```
+
+- `-To Upstream`: the newest commit of VlcekM/MeitouClient `master` (the script adds the `upstream` remote when missing).
+- `-To Release`: the newest upstream release tag `vX.Y.Z`.
+- `-To Fork`: the org fork's `fork` branch, pulled.
+- `-Branch <name>`: a branch of the org fork, such as an engine PR's branch.
+- Without `-Path` it uses the `MeitouClient` folder next to the mod repo. `-Run` builds the game in Release and starts it; `-Build` only
+  builds it.
+- Upstream, Release and `-Branch` leave the clone on a detached commit; the local `master` and `fork` branches are not changed. The script
+  stops without changing anything when the clone has uncommitted changes.
+- It never touches the mod repo's own `engine` submodule (that is `Update-Local.ps1` and the pins).
 
 ## Keep clones current
 
+After every pull, and whenever a build fails with engine types missing (e.g. `The type or namespace name 'RelationCause' could not be
+found`), close Visual Studio and run the update script in the mod's repo:
+
 ```powershell
-git -C $Ashen pull
-git -C $Ashen submodule update --init --recursive
+powershell -ExecutionPolicy Bypass -File "$Ashen\tools\Update-Local.ps1" -Clean -Build
 ```
+
+- It switches to `beta` and pulls it, then updates `engine` and `build/gutenstructure` to the commits `beta` pins (`git pull` alone
+  leaves them on the old ones). `-Branch <name>` pulls another branch.
+- It checks each submodule against its pin and prints the engine version.
+- It flags `MeitouEngineDir` and `MeitouFrameworkSources` in `Meitou.user.props` or the environment: they make the build use another
+  repo's engine or framework instead of this repo's pins. Delete them unless you are changing a framework and a mod together.
+- `-Clean` deletes the git-ignored `bin` and `obj` folders, so no build of the old engine is reused. `-Build` runs `dotnet build`.
+- It ends with `Up to date` or a list of lines marked `FIX`.
 
 The next build downloads a framework again only when `meitou.lock.json` changed.

@@ -4,9 +4,9 @@ using Meitou.Data.Fcs;
 namespace Husbandry;
 
 /// <summary>
-/// The mod's records (docs/husbandry.md "Data file"): the Animal Husbandry research and the Hitching Post it unlocks. The post is a copy of the
-/// game's own Prisoner Pole (look, collision, size, build cost) without its cage function, so the file is built from the installed game and holds
-/// no game content of its own, only the copied fields and links by id.
+/// The mod's records (docs/husbandry.md "Data file"): the Animal Husbandry research and the Hitching Post it unlocks, then the Beastmaster of Mourn
+/// (<see cref="TraderData"/>). The post is a copy of the game's own Prisoner Pole (look, collision, size, build cost) without its cage function,
+/// so the file is built from the installed game and holds no game content of its own, only the copied fields and links by id.
 /// </summary>
 public static class HusbandryData
 {
@@ -16,9 +16,21 @@ public static class HusbandryData
     public const string FileName = "Husbandry.mod";
 
     /// <summary>
-    /// The record ids.
+    /// The record ids: the research, the post, the Beastmaster's CHARACTER, his SQUAD_TEMPLATE, his conversation's DIALOGUE (its lines follow,
+    /// <see cref="TraderData"/>) and his shop's VENDOR_LIST.
     /// </summary>
-    public const string Research = "1-" + FileName, Post = "2-" + FileName;
+    public const string Research = "1-" + FileName, Post = "2-" + FileName, Trader = "3-" + FileName, TraderSquad = "4-" + FileName,
+        Conversation = "5-" + FileName, PackList = "19-" + FileName;
+
+    /// <summary>
+    /// The record number of the first stock SQUAD_TEMPLATE; one per kind of <see cref="Beastmaster.Kinds"/> follows in order.
+    /// </summary>
+    public const int FirstStockSquad = 20;
+
+    /// <summary>
+    /// The SQUAD_TEMPLATE of one stock animal of kind <paramref name="kind"/> (<see cref="Beastmaster.Kinds"/>).
+    /// </summary>
+    public static string StockSquad(int kind) => $"{FirstStockSquad + kind}-{FileName}";
 
     /// <summary>
     /// The game's building the post is copied from: its string id, else its name.
@@ -40,14 +52,19 @@ public static class HusbandryData
         + " all a ranch needs.";
 
     /// <summary>
-    /// Builds the data file from the game's records. Throws when the game has no <see cref="ModelName"/> building.
+    /// Builds the data file from the game's records. Throws when the game has no <see cref="ModelName"/> building or no
+    /// <see cref="TraderData.ModelName"/> character.
     /// </summary>
     public static FcsFile Build(GameDatabase game)
     {
         var model = Model(game) ?? throw new InvalidOperationException($"The game data has no BUILDING '{ModelName}'.");
 
-        var file = new FcsFile { Author = "MeitouMods", Description = "Husbandry: hitching posts and breeding. Generated; see docs/husbandry.md." };
-        file.Records.AddRange([ResearchRecord(), PostRecord(model)]);
+        var file = new FcsFile
+        {
+            Author = "MeitouMods",
+            Description = "Husbandry: hitching posts, breeding and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
+        };
+        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game)]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;
@@ -111,12 +128,12 @@ public static class HusbandryData
     /// <summary>
     /// A new record, as a mod file adds one.
     /// </summary>
-    static FcsRecord New(string id, FcsRecordType type, string name) => new() { StringId = id, Flags = 0x10, Name = name, RecordType = type };
+    internal static FcsRecord New(string id, FcsRecordType type, string name) => new() { StringId = id, Flags = 0x10, Name = name, RecordType = type };
 
     /// <summary>
     /// Copies every field of a merged record but its links.
     /// </summary>
-    static void CopyFields(GameRecord from, FcsRecord to)
+    internal static void CopyFields(GameRecord from, FcsRecord to)
     {
         foreach (var (key, value) in from.Bools) to.Bools[key] = value;
         foreach (var (key, value) in from.Floats) to.Floats[key] = value;
@@ -130,5 +147,5 @@ public static class HusbandryData
     /// <summary>
     /// A merged link as a file's.
     /// </summary>
-    static FcsReference Link(GameReference link) => new(link.TargetStringId, link.Values.Value0, link.Values.Value1, link.Values.Value2);
+    internal static FcsReference Link(GameReference link) => new(link.TargetStringId, link.Values.Value0, link.Values.Value1, link.Values.Value2);
 }

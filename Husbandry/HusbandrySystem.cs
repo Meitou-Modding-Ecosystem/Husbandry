@@ -50,6 +50,26 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
     readonly Breeding _breeding;
 
     /// <summary>
+    /// The animals' sexes.
+    /// </summary>
+    readonly Sexes _sexes;
+
+    /// <summary>
+    /// The Beastmaster of Mourn and his pen.
+    /// </summary>
+    readonly Beastmaster _beastmaster;
+
+    /// <summary>
+    /// The Beastmasters the debug menu put at player settlements.
+    /// </summary>
+    readonly OutpostTraders _outposts;
+
+    /// <summary>
+    /// Ticks between the Beastmaster's checks (one game second).
+    /// </summary>
+    public const int TraderEveryTicks = 30;
+
+    /// <summary>
     /// Set by <see cref="BreedNowCommand"/> until the next breeding pass.
     /// </summary>
     bool _breedNow;
@@ -67,7 +87,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         _settings = settings;
         _purpose = purpose;
         _population = context.Find<PopulationSystem>();
-        _breeding = new Breeding(purpose, log);
+        _sexes = new Sexes(purpose);
+        _breeding = new Breeding(purpose, _sexes, log);
+        _beastmaster = new Beastmaster(_population, _sexes, log, TraderPost.Mourn);
+        _outposts = new OutpostTraders(_population, _sexes, log);
+        TradeWindowGender.Sexes = _sexes;
     }
 
     /// <summary>
@@ -75,10 +99,28 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
     /// </summary>
     public string View => _view;
 
+    /// <summary>
+    /// The debug row's view of the Beastmaster (written in the tick, read on the host's thread).
+    /// </summary>
+    public string TraderView => _traderView;
+
+    /// <summary>
+    /// The settlement Beastmasters, for the debug row that adds one.
+    /// </summary>
+    public OutpostTraders Outposts => _outposts;
+
+    /// <summary>
+    /// The latest <see cref="TraderView"/>.
+    /// </summary>
+    volatile string _traderView = "Beastmaster: no world yet.";
+
     public void Inputs(World world, IReadOnlyList<SimCommand> commands)
     {
         foreach (var command in commands)
+        {
             if (command is BreedNowCommand) _breedNow = true;
+            if (command is SettlementTraderCommand trader) _outposts.Add(trader);
+        }
     }
 
     public void SlowWorld(World world)
@@ -89,11 +131,23 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         foreach (var h in hitched)
             if ((h.Slot + world.Tick) % PenEveryTicks == 0) Pens.Keep(world, h, settings, _purpose);
 
+        if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
+
         if (!_breedNow && world.Tick % BreedEveryTicks != 0) return;
 
         if (settings.Breeding) _breeding.Run(world, hitched, settings, _population, _breedNow);
         _breedNow = false;
         _view = Describe(world, hitched);
+    }
+
+    /// <summary>
+    /// The Beastmasters' check: Mourn's when the setting has him, and those at player settlements (the debug menu put them there).
+    /// </summary>
+    void RunTraders(World world, HusbandrySettings settings)
+    {
+        if (settings.Beastmaster) _beastmaster.Run(world, _purpose);
+        _outposts.Run(world, _purpose);
+        _traderView = _beastmaster.Describe(world) + _outposts.Describe(world);
     }
 
     /// <summary>
@@ -106,7 +160,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         var text = new StringBuilder();
         foreach (var h in hitched)
         {
-            bool female = Hitches.Female(h.Cold, _purpose);
+            bool female = _sexes.Female(h.Cold);
             string next = h.Cold.PortraitSerial is { } s && _breeding.NextTry.TryGetValue(s, out double at)
                 ? $", next try in {Math.Max(0, at - world.GameHours).ToString("0.#", CultureInfo.InvariantCulture)} h"
                 : "";
@@ -125,7 +179,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
     /// <summary>
     /// The sidecar layout's version.
     /// </summary>
-    public const int SaveVersion = 1;
+    public const int SaveVersion = 3;
 
     /// <summary>
     /// Hitches read from a save, waiting for the first tick to find their characters by portrait serial.
@@ -155,12 +209,30 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
             w.Write(serial);
             w.Write(next);
         }
+
+        WriteSexes(w);
+        _beastmaster.Write(w);
+        _outposts.Write(w);
+    }
+
+    /// <summary>
+    /// Writes the sexes the mod set (version 2).
+    /// </summary>
+    void WriteSexes(BinaryWriter w)
+    {
+        w.Write(_sexes.Assigned.Count);
+        foreach (var (serial, female) in _sexes.Assigned)
+        {
+            w.Write(serial);
+            w.Write(female);
+        }
     }
 
     public void Read(Stream stream)
     {
         using var r = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
-        if (r.ReadInt32() != SaveVersion) return;
+        int version = r.ReadInt32();
+        if (version is < 1 or > SaveVersion) return;
 
         _pending = [];
         int hitches = r.ReadInt32();
@@ -169,6 +241,15 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
         _breeding.NextTry.Clear();
         int clocks = r.ReadInt32();
         for (int k = 0; k < clocks; k++) _breeding.NextTry[r.ReadUInt32()] = r.ReadDouble();
+
+        if (version < 2) return;
+
+        _sexes.Assigned.Clear();
+        int sexes = r.ReadInt32();
+        for (int k = 0; k < sexes; k++) _sexes.Assigned[r.ReadUInt32()] = r.ReadBoolean();
+
+        _beastmaster.Read(r);
+        if (version >= 3) _outposts.Read(r);
     }
 
     /// <summary>
@@ -220,6 +301,15 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData
             hasher.Add(next);
         }
 
+        hasher.Add(_sexes.Assigned.Count);
+        foreach (var (serial, female) in _sexes.Assigned)
+        {
+            hasher.Add(serial);
+            hasher.Add(female);
+        }
+
+        _beastmaster.Hash(ref hasher);
+        _outposts.Hash(ref hasher);
         hasher.Add(_breedNow);
         hasher.Add(_pending?.Count ?? -1);
         HashHitches(ref hasher);
