@@ -141,6 +141,11 @@ that material the data phase sets the capsule's `mesh`, `ground mesh` and `mater
   player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead or
   carried. The nearest goes in: what it carried drops where it lay,
   and the character is removed from the world. One capsule of a stack is filled (split off; on the ground when the inventory has no room).
+- **Throw**: right-click a knocked-out beast a capsule may catch and choose **Throw Beast Capsule**: the first selected character holding an
+  empty capsule walks to within 300 units (30 m) of it (a move order, renewed every 2 s), plays the throw for 1 s and catches it as above
+  (`CapsuleThrows`). The throw is the game's COMBAT_TECHNIQUE `53666-rebirth.mod` "ma badpunch" (an overarm swing, played as a mod combat move)
+  until the mod has a throw clip of its own. A throw ends with a line over the thrower when the beast gets up, is carried or leaves, the thrower
+  is down or has no empty capsule left, or after 2 minutes. Throws in progress are not saved.
 - **Summon**: right-click a full capsule: the animal comes out 15 units from the character as a new member of the character's squad
   (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod skill levels, fully healed; the capsule is empty again. No room in
   the squad or the faction: it stays in.

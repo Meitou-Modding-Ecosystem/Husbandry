@@ -74,6 +74,11 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     }
 
     /// <summary>
+    /// Whether a capsule holds an animal.
+    /// </summary>
+    public static bool Full(ItemInstance capsule) => Key(capsule) is not null;
+
+    /// <summary>
     /// The key a full capsule holds, or null for an empty one.
     /// </summary>
     static int? Key(ItemInstance capsule) =>
@@ -95,6 +100,19 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
             return;
         }
 
+        Put(world, user, capsule, inventory, target);
+    }
+
+    /// <summary>
+    /// Catches the beast a thrown capsule hit (<see cref="CapsuleThrows"/>): as a right click beside it would.
+    /// </summary>
+    public void CatchThrown(World world, int user, ItemInstance capsule, Inventory inventory, int target) => Put(world, user, capsule, inventory, target);
+
+    /// <summary>
+    /// Puts an animal in one capsule of the stack and takes it out of the world.
+    /// </summary>
+    void Put(World world, int user, ItemInstance capsule, Inventory inventory, int target)
+    {
         var table = world.Characters;
         var cold = table.Cold(target)!;
         bool female = sexes.Female(cold);
@@ -138,7 +156,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     /// Whether an animal may be caught now: one of the player's whose race supports summoning, or a knocked-out one whose race supports taming
     /// (docs/husbandry.md "Supported animals"); never one carried.
     /// </summary>
-    bool Catchable(CharacterCold c)
+    public bool Catchable(CharacterCold c)
     {
         if (!c.CarriedBy.IsNone) return false;
         if (c.IsPlayer) return registry.Supports(c, AnimalSupport.Summoning);

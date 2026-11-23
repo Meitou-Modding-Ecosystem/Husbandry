@@ -1,7 +1,9 @@
+using Husbandry.Capsules;
 using Husbandry.Training;
 using Meitou.Data.Fcs;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Data.Gameplay.Bodies;
+using Meitou.Data.Gameplay.Combat;
 using Meitou.Modding;
 using Meitou.Simulation;
 using Meitou.Simulation.Bodies;
@@ -43,6 +45,17 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     List<(string StringId, string Name, bool Robot)> _races = [];
 
     /// <summary>
+    /// The stand-in throw: the game's COMBAT_TECHNIQUE "ma badpunch" (an overarm swing), until the mod has a throw clip of its own; null when the
+    /// data lacks it (the throw then plays nothing).
+    /// </summary>
+    CombatTechnique? _throwMove;
+
+    /// <summary>
+    /// The stand-in throw's COMBAT_TECHNIQUE (rebirth.mod, part of the base game).
+    /// </summary>
+    const string ThrowTechnique = "53666-rebirth.mod";
+
+    /// <summary>
     /// Adds the mod's records, built from the merged game data (docs/husbandry.md "Data file"). Throws, so the game leaves the mod out, when the
     /// game lacks a record they copy.
     /// </summary>
@@ -61,6 +74,9 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddJobOffer(Hitches.Offer);
         AddTraining(c);
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
+        _throwMove = c.Data.Find(ThrowTechnique) is { } move ? CombatTechnique.From(move) : null;
+        c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
+        c.AddUi(new CapsuleUi(() => _latest?.Throws));
         c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
@@ -86,7 +102,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
             c.Log("husbandry: supported animals: " + string.Join("; ", _registry.Describe(_races)));
         }
 
-        return new HusbandrySystem(context, Settings, _registry, c.RngPurpose, c.Log);
+        return new HusbandrySystem(context, Settings, _registry, c.RngPurpose, c.Log, _throwMove);
     }
 
     /// <summary>

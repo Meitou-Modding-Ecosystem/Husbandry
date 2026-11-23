@@ -1,3 +1,4 @@
+using Meitou.Data.Gameplay.Combat;
 using System.Globalization;
 using System.Text;
 using Meitou.Modding;
@@ -88,6 +89,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly CapsuleSystem _capsules;
 
     /// <summary>
+    /// Capsules thrown at knocked-out beasts.
+    /// </summary>
+    readonly CapsuleThrows _throws;
+
+    /// <summary>
     /// The animal kinds and trainable skills (docs/husbandry.md "Supported animals").
     /// </summary>
     readonly AnimalRegistry _registry;
@@ -115,7 +121,8 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// <summary>
     /// A system for one world.
     /// </summary>
-    public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, AnimalRegistry registry, RngPurpose purpose, Action<string> log)
+    public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, AnimalRegistry registry, RngPurpose purpose, Action<string> log,
+        CombatTechnique? throwMove)
     {
         _settings = settings;
         _registry = registry;
@@ -129,6 +136,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
         _capsules = new CapsuleSystem(_population, _sexes, registry, log);
+        _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove);
         TradeWindowGender.Sexes = _sexes;
     }
 
@@ -153,6 +161,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     public CapsuleSystem Capsules => _capsules;
 
     /// <summary>
+    /// The capsule throws, for the right-click row and the throw animation.
+    /// </summary>
+    public CapsuleThrows Throws => _throws;
+
+    /// <summary>
     /// The debug row's view of the capsules (written in the tick, read on the host's thread).
     /// </summary>
     public string CapsuleView => _capsuleView;
@@ -173,6 +186,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         {
             if (command is BreedNowCommand) _breedNow = true;
             if (command is SettlementTraderCommand trader) _outposts.Add(trader);
+            if (command is ThrowCapsuleCommand thrown) _throws.Take(world, thrown);
         }
     }
 
@@ -186,6 +200,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
 
         _tieUp.Apply(world);
         _capsules.Run(world);
+        _throws.Run(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
         if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
 
@@ -370,6 +385,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
 
     public void Hash(ref StateHasher hasher)
     {
+        _throws.Hash(ref hasher);
         hasher.Add(_breeding.NextTry.Count);
         foreach (var (serial, next) in _breeding.NextTry)
         {
