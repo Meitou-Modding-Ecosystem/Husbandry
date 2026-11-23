@@ -39,6 +39,8 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
   male: hunger 2 or more (well fed) 50 %, 1 to 2 (hungry) 25 %, below 1 (starving) 10 % (settings).
 - **Birth**: at once, no pregnancy. The pup is the mother's record, aged 0.05, born 12 units from her in her squad (a player character),
   hitched to her post, and "<mother> has given birth to a pup at the hitching post." is posted. None while the faction is at its head cap.
+- **Play-tested** (Observed, Matthew's "Settlement Test" save, 2026-11-23): a garru pair hitched to one post bred; the post then held three
+  hitched animals.
 
 ## The Beastmaster of Mourn
 
