@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Husbandry (docs/husbandry.md): hitching posts that keep assigned animals in a pen, and breeding. Its records are in Husbandry.mod, generated
-    from the installed game by Husbandry.Data. Built against the game's assemblies, never copied: the game loads them.
+    Husbandry (docs/husbandry.md): hitching posts that keep assigned animals in a pen, and breeding. Its records are added at load from the game's
+    own (data phase); Husbandry.mod is empty. Built against the game's assemblies, never copied: the game loads them.
   -->
 
   <PropertyGroup>

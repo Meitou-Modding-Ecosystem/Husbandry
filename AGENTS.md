@@ -62,4 +62,4 @@ A `needs-release` label means the merged change only reaches players after promo
 
 ## This repo
 
-- Husbandry (`Husbandry/`, data generator `Husbandry.Data/`; docs `docs/husbandry.md`). No frameworks: `engine` pins an upstream release tag.
+- Husbandry (`Husbandry/`, records added in the data phase; docs `docs/husbandry.md`). No frameworks: `engine` pins an upstream release tag.

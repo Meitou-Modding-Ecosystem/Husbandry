@@ -7,9 +7,10 @@ namespace Husbandry;
 
 /// <summary>
 /// Husbandry's entry (docs/husbandry.md): the Hitching Post job, the system that keeps pens, breeds and runs the Beastmaster of Mourn (and any the
-/// debug menu puts at a settlement), the trade window's gender patch, the settings and the debug rows.
+/// debug menu puts at a settlement), the trade window's gender patch, the settings and the debug rows. Its records are added in the data phase
+/// from the loaded game's own (<see cref="HusbandryData"/>), so the shipped Husbandry.mod is empty.
 /// </summary>
-public sealed class HusbandryMod : IMod
+public sealed class HusbandryMod : IMod, IModDataPhase
 {
     /// <summary>
     /// The mod's manifest id.
@@ -26,23 +27,19 @@ public sealed class HusbandryMod : IMod
     /// </summary>
     HusbandrySystem? _latest;
 
+    /// <summary>
+    /// Adds the mod's records, built from the merged game data (docs/husbandry.md "Data file"). Throws, so the game leaves the mod out, when the
+    /// game lacks a record they copy.
+    /// </summary>
+    public void EditData(ModDataContext c)
+    {
+        foreach (var record in HusbandryData.Build(c.Data).Records) c.Apply(record);
+    }
+
     public void Initialize(ModContext c)
     {
         c.AddSettings(Settings);
-        if (c.Data.Find(HusbandryData.Post) is null) c.LogError("Husbandry.mod has no records: generate it (docs/husbandry.md \"Data file\").");
-
-        if (c.Data.Find(HusbandryData.TraderSquad) is null)
-            c.LogError("Husbandry.mod has no Beastmaster: generate it again (docs/husbandry.md \"Data file\").");
-
-        if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.PackList) is null)
-            c.LogError("Husbandry.mod has no Beastmaster shop: generate it again (docs/husbandry.md \"Data file\").");
-
-        if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.StockSquad(0)) is null)
-            c.LogError("Husbandry.mod has no Beastmaster stock: generate it again (docs/husbandry.md \"Data file\").");
-
-        bool stale = c.Data.Find(HusbandryData.TrainingPost) is null || c.Data.Find(HusbandryData.Capsule) is null;
-        if (c.Data.Find(HusbandryData.Post) is not null && stale)
-            c.LogError("Husbandry.mod has no training buildings or capsules: generate it again (docs/husbandry.md \"Data file\").");
+        if (c.Data.Find(HusbandryData.Capsule) is null) c.LogError("Husbandry's records are missing: the data phase did not add them (see the log).");
 
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         c.AddJobType(Hitches.Type, Hitches.Name);
