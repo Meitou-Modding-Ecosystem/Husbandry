@@ -39,12 +39,18 @@ public sealed class StockSlot(int kind, bool female)
 /// <summary>
 /// The Hive Beastmaster of Mourn (docs/husbandry.md "The Beastmaster of Mourn"): a Western Hive soldier drone in the town's bar who sells garru,
 /// crabs and bonedogs, a male and a female of each, kept in a pen behind the bar. His conversation's "Show me your beasts" opens the game's own
-/// animal buying window (DA 48), which lists his town's animals of his faction (each stock animal is a held platoon of its own) and makes the bought ones the player's; the mod then walks each bought animal out
-/// of the pen to follow the buyer, and fills the empty place a day later. "Show me your packs" opens his shop of animal packs
-/// (<see cref="PackStock"/>). Serial steps only.
+/// animal buying window (DA 48), which lists his town's animals of his faction (each stock animal is a held platoon of its own) and makes the
+/// bought ones the player's; the mod then walks each bought animal out of the pen to follow the buyer, and fills the empty place a day later.
+/// "Show me your packs" opens his shop of animal packs (<see cref="PackStock"/>). The debug menu can put another at a player settlement
+/// (<see cref="OutpostPen"/>), with the same stock and shop. Serial steps only.
 /// </summary>
-public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Action<string> log)
+public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Action<string> log, TraderPost post)
 {
+    /// <summary>
+    /// Where he trades.
+    /// </summary>
+    public TraderPost Post => post;
+
     #region Stock
 
     /// <summary>
@@ -96,7 +102,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         var found = Find(world);
         foreach (var slot in Slots)
         {
-            HoldStock(world, Slots.IndexOf(slot));
+            HoldStock(world, StockTag(Slots.IndexOf(slot)));
             if (slot.Serial != 0 && found.TryGetValue(slot.Serial, out int at)) Keep(world, slot, at, trader, place, purpose);
             else if (slot.Serial != 0) Lost(slot);
             if (slot.Serial == 0 && world.GameHours >= slot.RefillAt) Fill(world, slot, place);
@@ -106,9 +112,9 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     /// <summary>
     /// Holds a place's platoon, when it has one, so the engine never moves or removes it.
     /// </summary>
-    static void HoldStock(World world, int index)
+    static void HoldStock(World world, string tag)
     {
-        if (world.Platoons.All.FirstOrDefault(p => p.ModTag == StockTag(index)) is { } platoon) PopulationSystem.HoldPlatoon(world, platoon.Id, true);
+        if (world.Platoons.All.FirstOrDefault(p => p.ModTag == tag) is { } platoon) PopulationSystem.HoldPlatoon(world, platoon.Id, true);
     }
 
     /// <summary>
@@ -237,9 +243,10 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     }
 
     /// <summary>
-    /// The tag that finds a place's platoon again after a load (<see cref="Platoon.ModTag"/>).
+    /// The tag that finds a place's platoon again after a load (<see cref="Platoon.ModTag"/>): "husbandry.stock.N" in Mourn,
+    /// "husbandry.stock.outpost.T.N" at a settlement.
     /// </summary>
-    public static string StockTag(int index) => $"husbandry.stock.{index}";
+    public string StockTag(int index) => post.Key is null ? $"husbandry.stock.{index}" : $"husbandry.stock.{post.Key}.{index}";
 
     /// <summary>
     /// Fills an empty place: adopts the living animal of its platoon once that platoon has loaded, else adds the platoon (one animal of the place's
@@ -273,7 +280,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         if (world.Platoons.Find(id) is not { } platoon)
         {
             slot.RefillAt = world.GameHours + 1;
-            log($"husbandry: the Beastmaster could not stock a {Kinds[slot.Kind].Name} (is Husbandry.mod generated again?); trying again in an hour");
+            log($"husbandry: the Beastmaster at {post.Where} could not stock a {Kinds[slot.Kind].Name} (is Husbandry.mod generated again?); trying again in an hour");
             return;
         }
 
@@ -348,9 +355,10 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     #region Trader
 
     /// <summary>
-    /// The tag that finds his platoon again after a load (<see cref="Platoon.ModTag"/>).
+    /// The tag that finds his platoon again after a load (<see cref="Platoon.ModTag"/>): "husbandry.beastmaster" in Mourn,
+    /// "husbandry.beastmaster.outpost.T" at a settlement.
     /// </summary>
-    public const string Tag = "husbandry.beastmaster";
+    public string Tag => post.Key is null ? "husbandry.beastmaster" : $"husbandry.beastmaster.{post.Key}";
 
     /// <summary>
     /// His faction: the Western Hive.
@@ -389,7 +397,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     PackStock? _packs;
 
     /// <summary>
-    /// One check: places him while Mourn is loaded and he is not in the world yet, holds his loaded squad, keeps him at the bar and his stock in the
+    /// One check: places him while his place is loaded and he is not in the world yet, holds his loaded squad, keeps him at the bar and his stock in the
     /// pen.
     /// </summary>
     public void Run(World world, RngPurpose purpose)
@@ -409,9 +417,9 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     }
 
     /// <summary>
-    /// The bar, found once while Mourn is loaded.
+    /// His place, found once while it is loaded.
     /// </summary>
-    BarPlace? Place(World world) => _place ??= MournBar.Find(world, population!.Data, PenRadius);
+    BarPlace? Place(World world) => _place ??= post.Find(world, population!.Data, PenRadius);
 
     /// <summary>
     /// Adds his platoon behind the bar (it loads as the player is near); null when that fails, tried again an hour later.
@@ -425,12 +433,12 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         if (world.Platoons.Find(id) is not { } platoon)
         {
             _nextTry = world.GameHours + RetryHours;
-            log("husbandry: could not place the Beastmaster in Mourn (is Husbandry.mod generated?); trying again in an hour");
+            log($"husbandry: could not place the Beastmaster at {post.Where} (is Husbandry.mod generated?); trying again in an hour");
             return null;
         }
 
         platoon.ModTag = Tag;
-        log($"husbandry: the Beastmaster arrives at Mourn's bar, his pen at {place.Pen.X:0}, {place.Pen.Y:0}");
+        log($"husbandry: the Beastmaster arrives at {post.Where}, his pen at {place.Pen.X:0}, {place.Pen.Y:0}");
         return platoon;
     }
 
@@ -543,9 +551,9 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
     /// </summary>
     public string Describe(World world)
     {
-        if (_place is not { } place) return "Beastmaster: Mourn's bar not found yet (visit Mourn).";
+        if (_place is not { } place) return $"Beastmaster at {post.Where}: not found yet (go there).";
 
-        var text = new StringBuilder($"Beastmaster: pen at {place.Pen.X:0}, {place.Pen.Y:0}");
+        var text = new StringBuilder($"Beastmaster at {post.Where}: pen at {place.Pen.X:0}, {place.Pen.Y:0}");
         text.AppendLine(world.Platoons.All.Any(p => p.ModTag == Tag) ? "" : " (not placed yet)");
         foreach (var slot in Slots)
         {
