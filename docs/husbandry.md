@@ -130,11 +130,12 @@ Trips (fetch walks, hunts) are not saved: after a load a hunter starts resting a
 
 ## Beast Capsules
 
-ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats, one inventory cell; a copy of the game's Fertiliser, else Leather or Hemp, for its look in
-the world). Its inventory icon is `Husbandry/items/icons/husbandry-beastcapsule.png` (`tools/make-icons.py` from
+ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats, one inventory cell; a copy of the game's Fertiliser, else Leather or Hemp, for its
+weight and other fields). Its inventory icon is `Husbandry/items/icons/husbandry-beastcapsule.png` (`tools/make-icons.py` from
 `concept-art/beastcapsule-inventory.png`; record `icon`, `auto icon image` false), which Play copies into the deployed mod (`PlayDeployAssets`).
-Its own model, `Husbandry/ItemModels/beast-capsule.glb` (11 cm, textures 1024), is kept out of `Structures`, which would make it a building;
-the import makes buildings only. The Beastmasters keep 5 in their shops after each fill.
+Its look is its own model, `Husbandry/ItemModels/beast-capsule.glb` (`size` 0.11 m in `beast-capsule.json`, textures 1024): the import
+makes mesh `husbandry_beast_capsule.mesh` and MATERIAL_SPECS_CLOTHING `950000-Husbandry.mod` (`ItemModels/ids.json`), and when the data has
+that material the data phase sets the capsule's `mesh`, `ground mesh` and `material` to them (else it keeps the stand-in's look). The Beastmasters keep 5 in their shops after each fill.
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
   player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead or

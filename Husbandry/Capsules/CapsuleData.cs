@@ -4,8 +4,9 @@ using Meitou.Data.Fcs;
 namespace Husbandry.Capsules;
 
 /// <summary>
-/// The Beast Capsule's record (docs/husbandry.md "Beast Capsules", "Data file"): an ITEM copied from a small game item (its look in the world and
-/// its weight; the structure import makes buildings only), with its own name, text, price, a one-cell footprint and its own inventory icon.
+/// The Beast Capsule's record (docs/husbandry.md "Beast Capsules", "Data file"): an ITEM copied from a small game item (its weight and other
+/// fields), wearing its own model from ItemModels/beast-capsule.glb when the import made it, with its own name, text, price, a one-cell
+/// footprint and its own inventory icon.
 /// </summary>
 public static class CapsuleData
 {
@@ -13,6 +14,12 @@ public static class CapsuleData
     /// The game items it is copied from, tried in order by name (the first the game has wins).
     /// </summary>
     static readonly string[] Models = ["Fertiliser", "Leather", "Hemp"];
+
+    /// <summary>
+    /// The mesh and MATERIAL_SPECS_CLOTHING the structure import makes from ItemModels/beast-capsule.glb: block 100 x n from 950000, n from
+    /// ItemModels/ids.json; the mesh is named after the mod and the model.
+    /// </summary>
+    public const string Mesh = "husbandry_beast_capsule.mesh", Material = "950000-" + HusbandryData.FileName;
 
     /// <summary>
     /// Its price, in cats.
@@ -50,7 +57,20 @@ public static class CapsuleData
         record.Ints["inventory footprint height"] = 1;
         record.Filenames["icon"] = Icon;
         record.Bools["auto icon image"] = false;
+        if (game.Find(Material) is not null) WearOwnModel(record);
         return record;
+    }
+
+    /// <summary>
+    /// Points the capsule at its own mesh and material, in place of its stand-in's look (an item's own texture map would win over its material).
+    /// </summary>
+    static void WearOwnModel(FcsRecord record)
+    {
+        record.Filenames["mesh"] = Mesh;
+        record.Filenames["ground mesh"] = Mesh;
+        record.Filenames["texture map"] = "";
+        record.Filenames["normal map"] = "";
+        record.References["material"] = [new FcsReference(Material, 0, 0, 0)];
     }
 
     /// <summary>
