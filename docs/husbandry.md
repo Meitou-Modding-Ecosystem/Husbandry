@@ -117,6 +117,20 @@ second; a job on a building that is gone or not the player's comes off.
 
 Trips (fetch walks, hunts) are not saved: after a load a hunter starts resting again.
 
+## Beast Capsules
+
+ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats; a copy of the game's Fertiliser, else Leather or Hemp, until its own model exists). The
+Beastmasters keep 5 in their shops after each fill.
+
+- **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
+  player's or is knocked out (unconscious), not a robot, a leviathan, dead or carried. The nearest goes in: what it carried drops where it lay,
+  and the character is removed from the world. One capsule of a stack is filled (split off; on the ground when the inventory has no room).
+- **Summon**: right-click a full capsule: the animal comes out 15 units from the character as a new member of the character's squad
+  (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod skill levels, fully healed; the capsule is empty again. No room in
+  the squad or the faction: it stays in.
+- A full capsule's `ModTag` is `husbandry.capsule:<key>` (it stacks only with capsules of the same key); the animals are kept by key in the
+  sidecar. Debug row **Husbandry: capsules** lists them.
+
 ## Load scan
 
 Any of the player's animals can be hitched, those of other mods included: the job takes every animal (the engine's `SquadRegistry.IsAnimal`), so
@@ -129,6 +143,7 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 ## Debug rows (F10)
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
+- **Husbandry: capsules**: each animal kept in a Beast Capsule.
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
   settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first
@@ -141,7 +156,8 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 
 The sidecar holds the hitches (portrait serial, post id), each paired female's next try (game hours), the sexes the mod set (portrait serial,
 female), the Beastmaster's six stock places (portrait serial, refill hour) and each settlement Beastmaster (settlement number, name, its six
-places), version 3; a version 2 sidecar loads with no settlement Beastmasters, a version 1 with none of the last three. The engine
+places) and the animals in Beast Capsules (next key; key, record, age, name, sex, stored stats, mod skill levels), version 4; a version 3
+sidecar loads with no capsule animals, a version 2 with no settlement Beastmasters either, a version 1 with none of the last four. The engine
 saves the hitch jobs too (as mod jobs of task type 4501); the sidecar's hitches go back on their characters at the first tick after a load, so
 saves from before 0.3.1 keep theirs. Both are in the world's state hash. A stock platoon is found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not
 found after a load adopts its platoon's animal again.

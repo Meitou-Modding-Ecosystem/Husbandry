@@ -9,7 +9,7 @@ namespace Husbandry;
 /// The animal packs the Beastmaster sells (docs/husbandry.md "The Beastmaster of Mourn"): one of every backpack an animal can wear is in his shop
 /// after each of its fills. An animal pack is a CONTAINER whose <c>races</c> list names a race of an ANIMAL_CHARACTER: only such a list lets an
 /// animal wear an item (the engine's <c>RaceLimiter</c>). The packs are found in the merged data at the first check, so those of other mods are
-/// sold too. Serial steps only.
+/// sold too. Beast Capsules are sold too (docs/husbandry.md "Beast Capsules"). Serial steps only.
 /// </summary>
 public sealed class PackStock(PopulationData data, Action<string> log)
 {
@@ -25,7 +25,13 @@ public sealed class PackStock(PopulationData data, Action<string> log)
     int _topped = -1;
 
     /// <summary>
-    /// One check: after each fill of his squad's shop, adds one of every animal pack the stock lacks.
+    /// How many Beast Capsules his shop holds after each fill.
+    /// </summary>
+    public const int Capsules = 5;
+
+    /// <summary>
+    /// One check: after each fill of his squad's shop, adds one of every animal pack the stock lacks, and Beast Capsules up to
+    /// <see cref="Capsules"/>.
     /// </summary>
     public void Top(Squad squad)
     {
@@ -37,6 +43,9 @@ public sealed class PackStock(PopulationData data, Action<string> log)
         {
             if (data.Items.Create(pack) is { } item && !shop.Stock.Add(item)) log($"husbandry: no room in the Beastmaster's stock for {pack}");
         }
+
+        int capsules = shop.Stock.All().Where(i => i.Record == HusbandryData.Capsule).Sum(i => i.Quantity);
+        if (capsules < Capsules && data.Items.Create(HusbandryData.Capsule, Capsules - capsules) is { } more) shop.Stock.Add(more);
     }
 
     /// <summary>

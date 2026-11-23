@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Meitou.Modding;
+using Husbandry.Capsules;
 using Husbandry.Training;
 using Meitou.Simulation;
 using Meitou.Simulation.Combat;
@@ -82,6 +83,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly TieUp _tieUp;
 
     /// <summary>
+    /// The Beast Capsules and the animals in them.
+    /// </summary>
+    readonly CapsuleSystem _capsules;
+
+    /// <summary>
     /// The game hours at the last training and work check; NaN before the first.
     /// </summary>
     double _workedAt = double.NaN;
@@ -116,6 +122,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _fetching = new Fetching(_population);
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
+        _capsules = new CapsuleSystem(_population, _sexes, log);
         TradeWindowGender.Sexes = _sexes;
     }
 
@@ -133,6 +140,21 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// The settlement Beastmasters, for the debug row that adds one.
     /// </summary>
     public OutpostTraders Outposts => _outposts;
+
+    /// <summary>
+    /// The Beast Capsules, for the item use and the debug row.
+    /// </summary>
+    public CapsuleSystem Capsules => _capsules;
+
+    /// <summary>
+    /// The debug row's view of the capsules (written in the tick, read on the host's thread).
+    /// </summary>
+    public string CapsuleView => _capsuleView;
+
+    /// <summary>
+    /// The latest <see cref="CapsuleView"/>.
+    /// </summary>
+    volatile string _capsuleView = "No animals in capsules.";
 
     /// <summary>
     /// The latest <see cref="TraderView"/>.
@@ -157,6 +179,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
             if ((h.Slot + world.Tick) % PenEveryTicks == 0) Pens.Keep(world, h, settings, _purpose);
 
         _tieUp.Apply(world);
+        _capsules.Run(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
         if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
 
@@ -175,6 +198,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         if (settings.Beastmaster) _beastmaster.Run(world, _purpose);
         _outposts.Run(world, _purpose);
         _traderView = _beastmaster.Describe(world) + _outposts.Describe(world);
+        _capsuleView = _capsules.Describe();
     }
 
     /// <summary>
@@ -223,7 +247,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// <summary>
     /// The sidecar layout's version.
     /// </summary>
-    public const int SaveVersion = 3;
+    public const int SaveVersion = 4;
 
     /// <summary>
     /// Hitches read from a save, waiting for the first tick to find their characters by portrait serial.
@@ -257,6 +281,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         WriteSexes(w);
         _beastmaster.Write(w);
         _outposts.Write(w);
+        _capsules.Write(w);
     }
 
     /// <summary>
@@ -294,6 +319,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
 
         _beastmaster.Read(r);
         if (version >= 3) _outposts.Read(r);
+        if (version >= 4) _capsules.Read(r);
     }
 
     /// <summary>
@@ -357,6 +383,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _fetching.Hash(ref hasher);
         _hunting.Hash(ref hasher);
         _tieUp.Hash(ref hasher);
+        _capsules.Hash(ref hasher);
         hasher.Add(_workedAt);
         hasher.Add(_breedNow);
         hasher.Add(_pending?.Count ?? -1);

@@ -28,6 +28,11 @@ public static class HusbandryData
     public const string TrainingPost = "30-" + FileName, PetStation = "31-" + FileName, BonePile = "32-" + FileName;
 
     /// <summary>
+    /// The Beast Capsule's record id (<see cref="Capsules.CapsuleData"/>).
+    /// </summary>
+    public const string Capsule = "33-" + FileName;
+
+    /// <summary>
     /// The record number of the first stock SQUAD_TEMPLATE; one per kind of <see cref="Beastmaster.Kinds"/> follows in order.
     /// </summary>
     public const int FirstStockSquad = 20;
@@ -69,7 +74,7 @@ public static class HusbandryData
             Author = "MeitouMods",
             Description = "Husbandry: hitching posts, breeding, animal training and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
         };
-        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game)]);
+        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), Capsules.CapsuleData.Build(game)]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;
