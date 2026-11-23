@@ -13,8 +13,8 @@ namespace Husbandry.Training;
 public static class TrainingPost
 {
     /// <summary>
-    /// The first training job's task type; one per skill of <see cref="AnimalSkills.All"/> follows in order (Husbandry keeps 4510 to 4519;
-    /// dependents' skills claim their own types).
+    /// The first training job's task type; one per skill of <see cref="AnimalSkills.All"/> follows in order (4510 to 4519, in
+    /// Husbandry's number block; dependents' skills claim types from their own blocks).
     /// </summary>
     public const int FirstType = 4510;
 

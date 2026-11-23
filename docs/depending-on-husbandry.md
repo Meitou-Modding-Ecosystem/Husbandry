@@ -57,7 +57,7 @@ public void Initialize(ModContext c)
 
     // A skill the Training Post teaches, only to garru and bulls.
     var herd = new ModSkill("mymod.herd", "Beast: Herd", SkillColumn.Sciences) { Description = "...", Start = 0 };
-    husbandry.AddSkill(herd, (TaskType)4720, ["Garru", "Bull"]);
+    husbandry.AddSkill(herd, MyMod.HerdJob, ["Garru", "Bull"]);   // a TaskType from your own number block
 }
 ```
 
@@ -66,8 +66,8 @@ public void Initialize(ModContext c)
   `Training`, `Taming` (catch a wild, knocked-out one), `Summoning` (store and summon one of the player's); `None` and `All`.
 - **Skills**: `AddSkill(skill, trainingType, races)` registers the skill with the game under your mod, claims `trainingType` as the "Training
   Herd" job and offers it on the Training Post as "Train: Herd" (the label after its colon, at most 32 characters with "Train: "). `races`
-  (string ids or names) limits who learns it; null means every race that supports training. The job type is yours: 1000 or more, not one
-  another mod claimed (Husbandry keeps 4501, 4510 to 4522; Bathhouse 4401 to 4409).
+  (string ids or names) limits who learns it; null means every race that supports training. The job type is yours: take it from your mod's
+  number block ([mod number blocks](https://github.com/TheIvoryDisaster/GutenStructure/blob/beta/docs/numbers.md); Husbandry's is 4500 to 4599).
 - What the skill does is your code: read it in your own system with `AnimalSkills.Level(cold, skill)` / `AnimalSkills.Has(cold, skill)`
   (unlocked at `AnimalSkills.Unlocked`, 10), train it by use with `AnimalSkills.Gain`. Your own work jobs can use Husbandry's buildings
   (`HusbandryData.TrainingPost`, `PetStation`, `BonePile`) and helpers (`Training.AnimalWork.Holders`, `Free`, `Walk`, `Say`, `Refused`).

@@ -14,7 +14,7 @@ skills the Training Post teaches; it never copies or replaces Husbandry. Read `d
 - One framework: reference `Husbandry` with `Private="false"` (the framework lock does); never list `Husbandry.dll` in your `assemblies`,
   never rename `husbandry`, never fork its code into your mod.
 - Register only in `Initialize`, through `c.Dependency<IHusbandryApi>(HusbandryMod.Id)!.For(c)`; later calls throw.
-- A skill's training job type is yours to claim: 1000 or more, clear of Husbandry's 4501 and 4510 to 4522 and other mods' ranges.
+- A skill's training job type is yours to claim: take it from your mod's number block (GutenStructure docs/numbers.md; Husbandry's is 4500 to 4599).
 - Determinism: a skill's effects run in your system's serial step; randomness from the engine's `Rng` with your `c.RngPurpose`.
 
 ## Steps

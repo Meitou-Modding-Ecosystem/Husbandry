@@ -13,6 +13,22 @@ Hitching posts and breeding for the player's animals in [MeitouClient](https://g
 - Agent rules for the engine pin, versions, CI and releases: [CLAUDE.md](CLAUDE.md) (same as `AGENTS.md`); step-by-step procedures:
   `.claude/skills/meitou-engine-release`.
 
+## Numbers
+
+Task types and dialogue codes are shared by every loaded mod; Husbandry claims only these, inside its block
+([mod number blocks](https://github.com/TheIvoryDisaster/GutenStructure/blob/beta/docs/numbers.md)). `NumbersTests` checks the list. A dependent's Training Post skill (`AddSkill`) takes its job type from the
+dependent's own block.
+
+Block 4500-4599
+
+| Number | Pool | Use |
+| --- | --- | --- |
+| 4501 | Task type | Job: Hitching (offered on the Hitching Post, animals) |
+| 4510-4515 | Task type | Jobs: Training Fetch, Guard, Hunt, Scout, Pack, Tie up (offered on the Training Post, animals) |
+| 4520 | Task type | Job: Fetching (offered on every storage, animals) |
+| 4521 | Task type | Job: Guarding (offered on the Pet Station, animals) |
+| 4522 | Task type | Job: Hunting (offered on the Bone Pile, animals) |
+
 ## Layout
 
 - `engine/`: MeitouClient as a git submodule, pinned to the engine commit the mod builds against. `git pull` does not move it: after

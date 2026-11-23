@@ -18,7 +18,7 @@ public readonly record struct Hitched(int Slot, CharacterCold Cold, BuildSite Po
 public static class Hitches
 {
     /// <summary>
-    /// The job's task type, claimed with <c>AddJobType</c> (Husbandry keeps task type number 4501; Bathhouse keeps 4401 to 4409).
+    /// The job's task type, claimed with <c>AddJobType</c> (inside Husbandry's number block 4500 to 4599, README "Numbers").
     /// </summary>
     public const TaskType Type = (TaskType)4501;
 
