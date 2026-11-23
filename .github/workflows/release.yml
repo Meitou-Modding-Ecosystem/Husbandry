@@ -28,4 +28,4 @@ jobs:
       slug: husbandry
       channel: release
       test-project: .
-      empty-data-mod: false
+      empty-data-mod: true

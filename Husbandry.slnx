@@ -2,7 +2,6 @@
   <Project Path="Play/Play.csproj" />
   <Folder Name="/Husbandry/">
     <Project Path="Husbandry/Husbandry.csproj" />
-    <Project Path="Husbandry.Data/Husbandry.Data.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/StructureImport/StructureImport.csproj" />

@@ -280,7 +280,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         if (world.Platoons.Find(id) is not { } platoon)
         {
             slot.RefillAt = world.GameHours + 1;
-            log($"husbandry: the Beastmaster at {post.Where} could not stock a {Kinds[slot.Kind].Name} (is Husbandry.mod generated again?); trying again in an hour");
+            log($"husbandry: the Beastmaster at {post.Where} could not stock a {Kinds[slot.Kind].Name} (are its records loaded?); trying again in an hour");
             return;
         }
 
@@ -433,7 +433,7 @@ public sealed class Beastmaster(PopulationSystem? population, Sexes sexes, Actio
         if (world.Platoons.Find(id) is not { } platoon)
         {
             _nextTry = world.GameHours + RetryHours;
-            log($"husbandry: could not place the Beastmaster at {post.Where} (is Husbandry.mod generated?); trying again in an hour");
+            log($"husbandry: could not place the Beastmaster at {post.Where} (are its records loaded?); trying again in an hour");
             return null;
         }
 

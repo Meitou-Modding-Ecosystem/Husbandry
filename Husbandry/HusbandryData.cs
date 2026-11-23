@@ -23,6 +23,16 @@ public static class HusbandryData
         Conversation = "5-" + FileName, PackList = "19-" + FileName;
 
     /// <summary>
+    /// The training buildings' record ids (<see cref="TrainingData"/>).
+    /// </summary>
+    public const string TrainingPost = "30-" + FileName, PetStation = "31-" + FileName, BonePile = "32-" + FileName;
+
+    /// <summary>
+    /// The Beast Capsule's record id (<see cref="Capsules.CapsuleData"/>).
+    /// </summary>
+    public const string Capsule = "33-" + FileName;
+
+    /// <summary>
     /// The record number of the first stock SQUAD_TEMPLATE; one per kind of <see cref="Beastmaster.Kinds"/> follows in order.
     /// </summary>
     public const int FirstStockSquad = 20;
@@ -49,7 +59,7 @@ public static class HusbandryData
     /// </summary>
     public const string ResearchText = "The basics of keeping animals at your base. Unlocks the Hitching Post: animals hitched to it keep to a pen"
         + " round it and breed when a male and a female of the same kind are there. Together with an Animal Feeder (Item Storage) to feed them, it is"
-        + " all a ranch needs.";
+        + " all a ranch needs. Also unlocks the Training Post, the Pet Station and the Bone Pile, to teach animals work.";
 
     /// <summary>
     /// Builds the data file from the game's records. Throws when the game has no <see cref="ModelName"/> building or no
@@ -62,9 +72,9 @@ public static class HusbandryData
         var file = new FcsFile
         {
             Author = "MeitouMods",
-            Description = "Husbandry: hitching posts, breeding and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
+            Description = "Husbandry: hitching posts, breeding, animal training and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
         };
-        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game)]);
+        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), Capsules.CapsuleData.Build(game)]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;
@@ -100,7 +110,13 @@ public static class HusbandryData
         record.Bools["is level upgrade"] = false;
         record.Strings["category"] = "Core";
         record.Strings["description"] = ResearchText;
-        record.References["enable buildings"] = [new FcsReference(Post, 0, 0, 0)];
+        record.References["enable buildings"] =
+        [
+            new FcsReference(Post, 0, 0, 0),
+            new FcsReference(TrainingPost, 0, 0, 0),
+            new FcsReference(PetStation, 0, 0, 0),
+            new FcsReference(BonePile, 0, 0, 0),
+        ];
         return record;
     }
 
