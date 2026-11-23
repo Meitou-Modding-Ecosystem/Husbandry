@@ -40,16 +40,19 @@ public sealed class HusbandryMod : IMod
         if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.StockSquad(0)) is null)
             c.LogError("Husbandry.mod has no Beastmaster stock: generate it again (docs/husbandry.md \"Data file\").");
 
-        if (c.Data.Find(HusbandryData.Post) is not null && c.Data.Find(HusbandryData.TrainingPost) is null)
-            c.LogError("Husbandry.mod has no training buildings: generate it again (docs/husbandry.md \"Data file\").");
+        bool stale = c.Data.Find(HusbandryData.TrainingPost) is null || c.Data.Find(HusbandryData.Capsule) is null;
+        if (c.Data.Find(HusbandryData.Post) is not null && stale)
+            c.LogError("Husbandry.mod has no training buildings or capsules: generate it again (docs/husbandry.md \"Data file\").");
 
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         c.AddJobType(Hitches.Type, Hitches.Name);
         c.AddJobOffer(Hitches.Offer);
         AddTraining(c);
+        c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
         c.AddSystem("husbandry", ctx => _latest = new HusbandrySystem(ctx, Settings, c.RngPurpose, c.Log), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
+        c.AddDebugCommand("Husbandry: capsules", _ => Told(c, _latest?.CapsuleView ?? NoWorld));
         c.AddDebugCommand(SettlementTraderRow.Label, d => Told(c, SettlementTraderRow.Run(d, _latest?.Outposts)), hasField: true);
         c.AddDebugCommand("Husbandry: try breeding now", d =>
         {
