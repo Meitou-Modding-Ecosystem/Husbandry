@@ -96,14 +96,20 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
+- **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
+  settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first
+  founded); leave it empty when you have one settlement. His pen is the first patch of even, walkable ground on rings 100 to 300 units round the
+  settlement's centre, he stands between it and the centre, and both appear while you are there. His platoons are homed at the town site nearest
+  the settlement, which the buying window needs. One per settlement; he runs whatever the "Beastmaster of Mourn" setting says.
 - **Husbandry: try breeding now**: every paired female tries at the next check.
 
 ## Save data
 
 The sidecar holds the hitches (portrait serial, post id), each paired female's next try (game hours), the sexes the mod set (portrait serial,
-female) and the Beastmaster's six stock places (portrait serial, refill hour), version 2; a version 1 sidecar loads with none of the last two. The engine
+female), the Beastmaster's six stock places (portrait serial, refill hour) and each settlement Beastmaster (settlement number, name, its six
+places), version 3; a version 2 sidecar loads with no settlement Beastmasters, a version 1 with none of the last three. The engine
 saves the hitch jobs too (as mod jobs of task type 4501); the sidecar's hitches go back on their characters at the first tick after a load, so
-saves from before 0.3.1 keep theirs. Both are in the world's state hash. A stock platoon is found again by its tag; a place whose animal is not
+saves from before 0.3.1 keep theirs. Both are in the world's state hash. A stock platoon is found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not
 found after a load adopts its platoon's animal again.
 
 ## Data file
