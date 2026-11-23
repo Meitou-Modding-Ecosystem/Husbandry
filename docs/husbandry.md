@@ -101,7 +101,7 @@ Own models: `Husbandry/Structures/training-post.glb`, `pet-station.glb`, `bone-p
 Husbandry building shows in the build menu). Play's structure import ([structures.md](structures.md)) turns each into a building, ids
 900200-, 900100- and 900000-Husbandry.mod (`Structures/ids.json`), which the data phase copies the look of. Heights 2.64 m, 1.62 m and 1.08 m:
 the art prompts' sizes (project file `husbandry-training/art-prompts.md`) times 1.2, as for the Bathhouse's pieces, the Pet Station by its
-width. Textures are shrunk to 2048. The release zip does not run the import yet, so released builds wear the stand-ins.
+width. Textures are shrunk to 2048.
 
 - **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
