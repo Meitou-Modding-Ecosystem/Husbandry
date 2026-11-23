@@ -1,3 +1,4 @@
+using Husbandry.Training;
 using Meitou.Data.Fcs;
 using Meitou.Modding;
 using Meitou.Simulation;
@@ -6,9 +7,10 @@ namespace Husbandry;
 
 /// <summary>
 /// Husbandry's entry (docs/husbandry.md): the Hitching Post job, the system that keeps pens, breeds and runs the Beastmaster of Mourn (and any the
-/// debug menu puts at a settlement), the trade window's gender patch, the settings and the debug rows.
+/// debug menu puts at a settlement), the trade window's gender patch, the settings and the debug rows. Its records are added in the data phase
+/// from the loaded game's own (<see cref="HusbandryData"/>), so the shipped Husbandry.mod is empty.
 /// </summary>
-public sealed class HusbandryMod : IMod
+public sealed class HusbandryMod : IMod, IModDataPhase
 {
     /// <summary>
     /// The mod's manifest id.
@@ -25,26 +27,29 @@ public sealed class HusbandryMod : IMod
     /// </summary>
     HusbandrySystem? _latest;
 
+    /// <summary>
+    /// Adds the mod's records, built from the merged game data (docs/husbandry.md "Data file"). Throws, so the game leaves the mod out, when the
+    /// game lacks a record they copy.
+    /// </summary>
+    public void EditData(ModDataContext c)
+    {
+        foreach (var record in HusbandryData.Build(c.Data).Records) c.Apply(record);
+    }
+
     public void Initialize(ModContext c)
     {
         c.AddSettings(Settings);
-        if (c.Data.Find(HusbandryData.Post) is null) c.LogError("Husbandry.mod has no records: generate it (docs/husbandry.md \"Data file\").");
-
-        if (c.Data.Find(HusbandryData.TraderSquad) is null)
-            c.LogError("Husbandry.mod has no Beastmaster: generate it again (docs/husbandry.md \"Data file\").");
-
-        if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.PackList) is null)
-            c.LogError("Husbandry.mod has no Beastmaster shop: generate it again (docs/husbandry.md \"Data file\").");
-
-        if (c.Data.Find(HusbandryData.TraderSquad) is not null && c.Data.Find(HusbandryData.StockSquad(0)) is null)
-            c.LogError("Husbandry.mod has no Beastmaster stock: generate it again (docs/husbandry.md \"Data file\").");
+        if (c.Data.Find(HusbandryData.Capsule) is null) c.LogError("Husbandry's records are missing: the data phase did not add them (see the log).");
 
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         c.AddJobType(Hitches.Type, Hitches.Name);
         c.AddJobOffer(Hitches.Offer);
+        AddTraining(c);
+        c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
         c.AddSystem("husbandry", ctx => _latest = new HusbandrySystem(ctx, Settings, c.RngPurpose, c.Log), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
+        c.AddDebugCommand("Husbandry: capsules", _ => Told(c, _latest?.CapsuleView ?? NoWorld));
         c.AddDebugCommand(SettlementTraderRow.Label, d => Told(c, SettlementTraderRow.Run(d, _latest?.Outposts)), hasField: true);
         c.AddDebugCommand("Husbandry: try breeding now", d =>
         {
@@ -52,6 +57,27 @@ public sealed class HusbandryMod : IMod
             return "Every paired female tries at the next check.";
         });
         LogAnimals(c);
+    }
+
+    /// <summary>
+    /// The animal skills (docs/husbandry.md "Training"): the skills and their effects, a training job per skill on the Training Post, and the work
+    /// jobs: Fetch on every storage, Guard on the Pet Station, Hunt on the Bone Pile.
+    /// </summary>
+    static void AddTraining(ModContext c)
+    {
+        AnimalSkills.Register(c);
+        foreach (var (index, _) in AnimalSkills.All.Index())
+        {
+            c.AddJobType(TrainingPost.TypeOf(index), TrainingPost.NameOf(index));
+            c.AddJobOffer(TrainingPost.OfferOf(index));
+        }
+
+        c.AddJobType(Fetching.Type, Fetching.Name);
+        c.AddJobOffer(Fetching.Offer(c.Data, c.Records((int)FcsRecordType.Building)));
+        c.AddJobType(Guarding.Type, Guarding.Name);
+        c.AddJobOffer(Guarding.Offer);
+        c.AddJobType(Hunting.Type, Hunting.Name);
+        c.AddJobOffer(Hunting.Offer);
     }
 
     /// <summary>

@@ -1,9 +1,9 @@
 # Husbandry (content mod)
 
-Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; data file generator: `Husbandry.Data/`.
+Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; its records are added at load (Data file).
 Needs Meitou 0.22.2 or later (nightlies included), below 0.23 (`gameVersion`; code-mod API 3, for `World.GiveOrder`); built against the
 engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs (`AddJobType`,
-`AddJobOffer`; task type 4501), `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
+`AddJobOffer`; task types 4501, 4510 to 4515, 4520 to 4522), mod skills and status effects, `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
 "World hooks").
 
 ## Setting up a ranch
@@ -39,6 +39,8 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
   male: hunger 2 or more (well fed) 50 %, 1 to 2 (hungry) 25 %, below 1 (starving) 10 % (settings).
 - **Birth**: at once, no pregnancy. The pup is the mother's record, aged 0.05, born 12 units from her in her squad (a player character),
   hitched to her post, and "<mother> has given birth to a pup at the hitching post." is posted. None while the faction is at its head cap.
+- **Play-tested** (Observed, Matthew's "Settlement Test" save, 2026-11-23): a garru pair hitched to one post bred; the post then held three
+  hitched animals.
 
 ## The Beastmaster of Mourn
 
@@ -83,6 +85,54 @@ kept in a pen behind the bar, and every animal pack.
   died, or the squad left the world and came back without it) fills at once. The window's "Gender:" line shows the mod's sex (a Harmony
   postfix on the engine's `CharacterTrading.OpenCharacterTrade`; the game reads the look's `sex female`, which no animal has).
 
+## Training
+
+Animals learn six skills, each a mod skill in the stats window (`husbandry.fetch`, `.guard`, `.hunt`, `.scout`, `.pack`, `.tieup`; labels
+"Beast: ..."), 0 until trained. A skill is **unlocked at 10**; below that the animal refuses the work that needs it (the job comes off with a
+floating "Needs Fetch 10" line). Skills train on the game's curve (`ModSkill.Gain`), are saved and hashed by the engine with the character.
+The **Animal Husbandry** research also unlocks the three buildings, copies of game buildings until their own models exist
+(art prompts: project file `husbandry-training/art-prompts.md`): Training Post `30-Husbandry.mod` (Training Dummy, else Prisoner Pole, no
+function), Pet Station `31-` (Bedroll, else Prisoner Pole, no function), Bone Pile `32-` (Wooden Barrel, keeps its storage). Checked once a game
+second; a job on a building that is gone or not the player's comes off.
+
+- **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"). The
+  animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and gains 1 a game hour, 2 while a standing person of the
+  player's is within 200 units (about ten hours alone from 0 to 10).
+- **Fetch** (job 4520 "Fetching", offered on every storage building of the merged data as **Fetch for here**): an idle animal free of the
+  player's orders carries the output of the player's finished machines within 3000 units of the storage that the storage takes, nearest machine
+  first, into the storage. It carries in its pack only (a live animal's main grid takes nothing, engine `Inventory.Add` `mainShut`), so without a
+  pack the job comes off. At 80 units of a building's centre it is there; after three walks to one target that end short, that target is skipped
+  for a game hour. +0.5 Fetch a load.
+- **Guard** (job 4521 "Guarding", **Guard here** on the Pet Station): the animal keeps to a pen round the station and, while within 2000 units
+  of it (200 m), has the status effect **Guarding home** (+30 melee attack and defence). It trains 0.2 a game hour there, 2 in a fight.
+- **Hunt** (job 4522 "Hunting", **Hunt from here** on the Bone Pile): the animal rests in a pen round the pile, then runs to a walkable spot
+  1500 to 12000 units away (1200 m), turns back on arrival or after 3 game hours, and drops raw meat (the game's ITEM named "Raw Meat"; one
+  piece plus one per 25 Hunt) into the pile, on the ground by it when full. It rests 8 game hours at Hunt 10, down to 2 at 100. +2 Hunt a hunt.
+- **Scout**: the engine lets any character sneak (the original never lets an animal: engine docs/game/animals.md); the mod turns sneaking off
+  for an animal below Scout 10. A scout gets **Scout trained**, +3 stealth per 10 levels, and trains 0.3 a game hour while sneaking. It has no
+  sneaking animation.
+- **Pack**: **Pack trained**, +3 strength per 10 levels (more carry weight). Trains 0.3 a game hour while its pack holds anything.
+- **Tie up**: a melee hit landed by an animal with Tie up 10 or more knocks the foe out (`MedicalState.KnockOut`) with chance 0.25 % per level
+  (2.5 % at 10, 25 % at 100), for 0.02 x level + 0.45 seconds, at most 2. Hits are observed with `ICombatHitObserver` and the knock-downs applied
+  in the next serial step. +0.05 Tie up a landed hit. Aiming at the legs and severing one need an engine hit hook (Husbandry #40, #41).
+- **Mount training**: not built; it belongs with Meitou Transport's riding.
+
+Trips (fetch walks, hunts) are not saved: after a load a hunter starts resting again.
+
+## Beast Capsules
+
+ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats; a copy of the game's Fertiliser, else Leather or Hemp, until its own model exists). The
+Beastmasters keep 5 in their shops after each fill.
+
+- **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
+  player's or is knocked out (unconscious), not a robot, a leviathan, dead or carried. The nearest goes in: what it carried drops where it lay,
+  and the character is removed from the world. One capsule of a stack is filled (split off; on the ground when the inventory has no room).
+- **Summon**: right-click a full capsule: the animal comes out 15 units from the character as a new member of the character's squad
+  (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod skill levels, fully healed; the capsule is empty again. No room in
+  the squad or the faction: it stays in.
+- A full capsule's `ModTag` is `husbandry.capsule:<key>` (it stacks only with capsules of the same key); the animals are kept by key in the
+  sidecar. Debug row **Husbandry: capsules** lists them.
+
 ## Load scan
 
 Any of the player's animals can be hitched, those of other mods included: the job takes every animal (the engine's `SquadRegistry.IsAnimal`), so
@@ -95,6 +145,7 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 ## Debug rows (F10)
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
+- **Husbandry: capsules**: each animal kept in a Beast Capsule.
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
   settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first
@@ -107,15 +158,18 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 
 The sidecar holds the hitches (portrait serial, post id), each paired female's next try (game hours), the sexes the mod set (portrait serial,
 female), the Beastmaster's six stock places (portrait serial, refill hour) and each settlement Beastmaster (settlement number, name, its six
-places), version 3; a version 2 sidecar loads with no settlement Beastmasters, a version 1 with none of the last three. The engine
+places) and the animals in Beast Capsules (next key; key, record, age, name, sex, stored stats, mod skill levels), version 4; a version 3
+sidecar loads with no capsule animals, a version 2 with no settlement Beastmasters either, a version 1 with none of the last four. The engine
 saves the hitch jobs too (as mod jobs of task type 4501); the sidecar's hitches go back on their characters at the first tick after a load, so
 saves from before 0.3.1 keep theirs. Both are in the world's state hash. A stock platoon is found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not
 found after a load adopts its platoon's animal again.
 
 ## Data file
 
-`Husbandry.mod`, record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`,
-without its cage function, category FARMING), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1
-actions, 19 his shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog). A `.mod` generated before 0.2.0 lacks 3 to 19, one before
-0.2.5 lacks 17 to 19 (no pack shop; logged), one before 0.3.1 lacks 20 to 22 (no stock; logged): generate it again. Generated from the installed game: `dotnet run --project Husbandry.Data -- "<Kenshi>" "<out>"`;
-the Play project does it on F5. Untested in play.
+Record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`, without its cage
+function, category FARMING), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1 actions, 19 his
+shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule. The entry adds them
+in the data phase (`IModDataPhase.EditData`, engine docs/modding.md "Data phase") from the merged game data as it loads (`HusbandryData.Build`),
+so they follow the player's own game and mods and need no install at build time. The shipped `Husbandry.mod` is empty (release
+`empty-data-mod: true`); a `Husbandry.mod` generated by an older version (0.6.0 and before) should be deleted from the mods folder, since Play
+never replaces an existing one.
