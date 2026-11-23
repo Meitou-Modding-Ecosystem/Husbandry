@@ -136,7 +136,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
         _capsules = new CapsuleSystem(_population, _sexes, registry, log);
-        _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove);
+        _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove, purpose);
         TradeWindowGender.Sexes = _sexes;
     }
 

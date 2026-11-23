@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Numerics;
 using Husbandry.Training;
 using Meitou.Data.Gameplay.Combat;
 using Meitou.Simulation;
+using Meitou.Simulation.Bodies;
 using Meitou.Simulation.Items;
 
 namespace Husbandry.Capsules;
@@ -15,10 +17,26 @@ public sealed record ThrowCapsuleCommand(IReadOnlyList<CharacterId> Throwers, Ch
 /// <summary>
 /// Throwing a Beast Capsule (docs/husbandry.md "Beast Capsules"): the player right-clicks a knocked-out beast and chooses Throw Beast Capsule; the
 /// first selected character holding an empty capsule walks to within <see cref="Range"/> of it, plays the throw and catches it as a right click on
-/// the capsule beside it would. Throws in progress are not saved. Serial steps, except <see cref="Move"/> and the published views.
+/// the capsule beside it would, unless the beast breaks free (<see cref="BreakFreeChance"/>): it comes to, healed just enough to stand, and the
+/// capsule stays empty. Throws in progress are not saved. Serial steps, except <see cref="Move"/> and the published views.
 /// </summary>
-public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, CombatTechnique? throwMove)
+public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, CombatTechnique? throwMove, RngPurpose purpose)
 {
+    /// <summary>
+    /// The chance in 100 that a thrown capsule's beast breaks free instead of being caught.
+    /// </summary>
+    public const int BreakFreeChance = 20;
+
+    /// <summary>
+    /// The salt of the break-free roll.
+    /// </summary>
+    const ulong BreakFreeSalt = 0xCA75;
+
+    /// <summary>
+    /// What a vital part and the blood are brought up to when a beast breaks free: just above where it would stay down (h - s + rig at 0).
+    /// </summary>
+    const float RousedHealth = 1;
+
     /// <summary>
     /// How near the beast the thrower must be, in game units (30 m).
     /// </summary>
@@ -61,9 +79,19 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     }
 
     /// <summary>
+    /// The most landings <see cref="Landed"/> holds undrawn (no interface drains it in a headless world).
+    /// </summary>
+    const int MaxLanded = 16;
+
+    /// <summary>
     /// The throws in progress.
     /// </summary>
     readonly List<Throw> _throws = [];
+
+    /// <summary>
+    /// Where capsules landed, for the mist the interface draws there (display only: never read by the world, not hashed).
+    /// </summary>
+    public ConcurrentQueue<Vector3> Landed { get; } = new();
 
     /// <summary>
     /// The throwers in their throw and the tick it started, published after each serial step for <see cref="Move"/>.
@@ -155,8 +183,47 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         if (t.StartedAt < 0) return Approach(world, t, thrower, beast);
         if ((world.Tick - t.StartedAt) * world.TickSeconds < ThrowSeconds) return true;
 
-        capsules.CatchThrown(world, thrower, capsule, cold.Inventory!, beast);
+        if (Landed.Count < MaxLanded) Landed.Enqueue(world.Characters.Next[beast].Position);
+        if (BreaksFree(world, t)) Rouse(world, thrower, beast);
+        else capsules.CatchThrown(world, thrower, capsule, cold.Inventory!, beast);
         return false;
+    }
+
+    /// <summary>
+    /// The break-free roll of a landed throw (<see cref="BreakFreeChance"/>), from the world's seed, the beast and the tick.
+    /// </summary>
+    bool BreaksFree(World world, Throw t)
+    {
+        ulong entity = ((ulong)(uint)t.Target.Slot << 32) | (uint)t.Target.Generation;
+        return Rng.Float(Rng.Hash(world.Seed, entity, purpose, BreakFreeSalt ^ (ulong)world.Tick)) * 100 < BreakFreeChance;
+    }
+
+    /// <summary>
+    /// The beast breaks free: its knock-out ends and its vital parts and blood come up just enough that the medical tick lets it stand.
+    /// </summary>
+    static void Rouse(World world, int thrower, int beast)
+    {
+        var cold = world.Characters.Cold(beast)!;
+        if (cold.Medical is not { } medical) return;
+
+        medical.KoTimer = 0;
+        medical.Blood = Math.Max(medical.Blood, RousedHealth);
+        foreach (var part in medical.Parts.Where(p => p.IsVital)) RaisePart(part);
+
+        AnimalWork.Say(world, thrower, $"{cold.Name} broke free!");
+    }
+
+    /// <summary>
+    /// Brings a vital part's h - s + rig up to <see cref="RousedHealth"/>: its stun first, then its flesh.
+    /// </summary>
+    static void RaisePart(HealthPart part)
+    {
+        float lack = RousedHealth - (part.Flesh - part.Stun + part.Rig);
+        if (lack <= 0) return;
+
+        float unstun = Math.Min(part.Stun, lack);
+        part.Stun -= unstun;
+        part.Flesh += lack - unstun;
     }
 
     /// <summary>
