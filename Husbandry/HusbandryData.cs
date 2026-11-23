@@ -59,7 +59,8 @@ public static class HusbandryData
     /// </summary>
     public const string ResearchText = "The basics of keeping animals at your base. Unlocks the Hitching Post: animals hitched to it keep to a pen"
         + " round it and breed when a male and a female of the same kind are there. Together with an Animal Feeder (Item Storage) to feed them, it is"
-        + " all a ranch needs. Also unlocks the Training Post, the Pet Station and the Bone Pile, to teach animals work.";
+        + " all a ranch needs. Also unlocks the Training Post, the Pet Station and the Bone Pile, to teach animals work, and the Capsule Bench, to"
+        + " make Beast Capsules.";
 
     /// <summary>
     /// Builds the data file from the game's records. Throws when the game has no <see cref="ModelName"/> building or no
@@ -74,8 +75,10 @@ public static class HusbandryData
             Author = "MeitouMods",
             Description = "Husbandry: hitching posts, breeding, animal training and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
         };
-        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), Capsules.CapsuleData.Build(game),
-            .. Capsules.ThrowData.Build()]);
+        var capsule = Capsules.CapsuleData.Build(game);
+        Capsules.BenchData.AddRecipe(game, capsule);
+        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), capsule,
+            .. Capsules.ThrowData.Build(), .. Capsules.BenchData.Build(game)]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;
@@ -117,6 +120,7 @@ public static class HusbandryData
             new FcsReference(TrainingPost, 0, 0, 0),
             new FcsReference(PetStation, 0, 0, 0),
             new FcsReference(BonePile, 0, 0, 0),
+            new FcsReference(Capsules.BenchData.Bench, 0, 0, 0),
         ];
         return record;
     }
