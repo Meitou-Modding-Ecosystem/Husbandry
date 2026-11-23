@@ -74,7 +74,8 @@ public static class HusbandryData
             Author = "MeitouMods",
             Description = "Husbandry: hitching posts, breeding, animal training and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
         };
-        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), Capsules.CapsuleData.Build(game)]);
+        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), Capsules.CapsuleData.Build(game),
+            .. Capsules.ThrowData.Build()]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;

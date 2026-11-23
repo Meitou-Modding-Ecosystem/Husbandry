@@ -48,9 +48,14 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     const float Margin = 20;
 
     /// <summary>
-    /// How long the throw plays before the capsule lands, in seconds.
+    /// How long the throw plays, in seconds: the length of its clip (<see cref="ThrowData.Clip"/>).
     /// </summary>
-    const float ThrowSeconds = 1;
+    const float ThrowSeconds = 1.7f;
+
+    /// <summary>
+    /// When the capsule lands, in seconds into the throw: the clip lets go at 0.9 s, then a short flight.
+    /// </summary>
+    const float LandSeconds = 1.1f;
 
     /// <summary>
     /// How often a walking thrower is sent on again (a move order ends when something interrupts it), in ticks.
@@ -76,6 +81,11 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         /// The tick the throw started, -1 while the thrower is still walking.
         /// </summary>
         public long StartedAt { get; set; } = -1;
+
+        /// <summary>
+        /// Whether the capsule has landed; the thrower then finishes the clip.
+        /// </summary>
+        public bool Landed { get; set; }
     }
 
     /// <summary>
@@ -166,6 +176,7 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
             hasher.Add(t.Target.Slot);
             hasher.Add(t.Target.Generation);
             hasher.Add(t.StartedAt);
+            hasher.Add(t.Landed);
         }
     }
 
@@ -176,18 +187,25 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     {
         var table = world.Characters;
         if (!table.TryResolveNext(t.Thrower, out int thrower) || table.Cold(thrower) is not { } cold || Hitches.Down(cold)) return false;
+        if (t.Landed) return Seconds(world, t) < ThrowSeconds;
         if (world.Tick - t.ChosenAt > GiveUpTicks) return Said(world, thrower, "Gave up the throw");
         if (!table.TryResolveNext(t.Target, out int beast) || !capsules.Catchable(table.Cold(beast)!)) return Said(world, thrower, "The beast got away");
         if (EmptyCapsule(world, thrower) is not { } capsule) return Said(world, thrower, "No empty Beast Capsule");
 
         if (t.StartedAt < 0) return Approach(world, t, thrower, beast);
-        if ((world.Tick - t.StartedAt) * world.TickSeconds < ThrowSeconds) return true;
+        if (Seconds(world, t) < LandSeconds) return true;
 
         if (Landed.Count < MaxLanded) Landed.Enqueue(world.Characters.Next[beast].Position);
         if (BreaksFree(world, t)) Rouse(world, thrower, beast);
         else capsules.CatchThrown(world, thrower, capsule, cold.Inventory!, beast);
-        return false;
+        t.Landed = true;
+        return true;
     }
+
+    /// <summary>
+    /// How long a started throw has played, in seconds.
+    /// </summary>
+    static float Seconds(World world, Throw t) => (world.Tick - t.StartedAt) * world.TickSeconds;
 
     /// <summary>
     /// The break-free roll of a landed throw (<see cref="BreakFreeChance"/>), from the world's seed, the beast and the tick.

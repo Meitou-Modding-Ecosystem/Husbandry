@@ -46,15 +46,9 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     List<(string StringId, string Name, bool Robot)> _races = [];
 
     /// <summary>
-    /// The stand-in throw: the game's COMBAT_TECHNIQUE "ma badpunch" (an overarm swing), until the mod has a throw clip of its own; null when the
-    /// data lacks it (the throw then plays nothing).
+    /// The throw's COMBAT_TECHNIQUE (<see cref="ThrowData"/>); null when the data phase did not add it (the throw then plays nothing).
     /// </summary>
     CombatTechnique? _throwMove;
-
-    /// <summary>
-    /// The stand-in throw's COMBAT_TECHNIQUE (rebirth.mod, part of the base game).
-    /// </summary>
-    const string ThrowTechnique = "53666-rebirth.mod";
 
     /// <summary>
     /// The mist where a thrown capsule lands: the game's white poison gas (EFFECT 62780-Newwworld.mod) tinted pink, for <see cref="MistSeconds"/>.
@@ -78,6 +72,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     public void EditData(ModDataContext c)
     {
         foreach (var record in HusbandryData.Build(c.Data).Records) c.Apply(record);
+        ThrowData.LinkRaces(c);
     }
 
     public void Initialize(ModContext c)
@@ -90,7 +85,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddJobOffer(Hitches.Offer);
         AddTraining(c);
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
-        _throwMove = c.Data.Find(ThrowTechnique) is { } move ? CombatTechnique.From(move) : null;
+        _throwMove = c.Data.Find(ThrowData.Technique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
         c.AddUi(new CapsuleUi(() => _latest?.Throws, at => c.PlayEffect(MistEffect, at, MistSeconds, MistTint)));
         c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
