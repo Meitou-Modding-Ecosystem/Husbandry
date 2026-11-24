@@ -1,13 +1,15 @@
 using Meitou.Data;
 using Meitou.Data.Fcs;
+using Meitou.Data.Gameplay.Construction;
 
 namespace Husbandry;
 
 /// <summary>
 /// The training buildings' records (docs/husbandry.md "Training", "Data file"): the Training Post, the Pet Station and the Bone Pile. Each takes
 /// its look from the building the structure import made from its own model (Structures/, docs/structures.md) when the loaded data has it, else
-/// from a game building (the stand-in), and its build cost from the stand-in either way. The post and the station have no function; the pile
-/// keeps the stand-in's storage. All three are unlocked by the Animal Husbandry research.
+/// from a game building (the stand-in), and its build cost from the stand-in either way. The post and the station have no function; the pile is
+/// a machine whose only output is Raw Meat (<see cref="PileWork"/>), filled by its hunters. All three are unlocked by the Animal Husbandry
+/// research.
 /// </summary>
 public static class TrainingData
 {
@@ -26,9 +28,21 @@ public static class TrainingData
         PileLook = "900000-" + HusbandryData.FileName;
 
     /// <summary>
-    /// What the pile keeps of its stand-in's storage when it wears its own look.
+    /// The pile's BUILDING_FUNCTIONALITY: a refinery (function 4) that makes nothing by itself (<c>production mult</c> 0) and needs nobody at it
+    /// (<c>max operators</c> 0, an automatic machine), whose output is <see cref="MeatHeld"/> Raw Meat; the hunters fill it
+    /// (<see cref="Training.Hunting"/>) and haulers carry it off, as from any machine's output, never into it.
     /// </summary>
-    static readonly string[] StorageLists = ["functionality", "limit inventory"], StorageInts = ["storage size width", "storage size height"];
+    public const string PileWork = "38-" + HusbandryData.FileName;
+
+    /// <summary>
+    /// How many Raw Meat the pile's output holds.
+    /// </summary>
+    public const int MeatHeld = 20;
+
+    /// <summary>
+    /// The BUILDING fields that would give the pile a storage of its own (from the stand-in barrel).
+    /// </summary>
+    static readonly string[] StorageInts = ["storage size width", "storage size height"];
 
     /// <summary>
     /// The texts in the build menu.
@@ -43,20 +57,56 @@ public static class TrainingData
         + " it runs out far into the wilds and comes back with raw meat, more often and with more as it learns.";
 
     /// <summary>
-    /// The three buildings. Throws when the game has none of a building's models.
+    /// The three buildings and the pile's functionality (none when the game has no Raw Meat). Throws when the game has none of a building's models.
     /// </summary>
-    public static IEnumerable<FcsRecord> Build(GameDatabase game) =>
-    [
-        Copy(game, HusbandryData.TrainingPost, "Training Post", PostLook, PostModels, PostText, keepFunction: false),
-        Copy(game, HusbandryData.PetStation, "Pet Station", StationLook, StationModels, StationText, keepFunction: false),
-        Copy(game, HusbandryData.BonePile, "Bone Pile", PileLook, PileModels, PileText, keepFunction: true),
-    ];
+    public static IEnumerable<FcsRecord> Build(GameDatabase game)
+    {
+        var pile = Copy(game, HusbandryData.BonePile, "Bone Pile", PileLook, PileModels, PileText);
+        return
+        [
+            Copy(game, HusbandryData.TrainingPost, "Training Post", PostLook, PostModels, PostText),
+            Copy(game, HusbandryData.PetStation, "Pet Station", StationLook, StationModels, StationText),
+            pile,
+            .. MeatOutput(game, pile),
+        ];
+    }
 
     /// <summary>
-    /// The building in the build menu's Husbandry category with its own name and text: a copy of its own look when the data has it, else of the first of
-    /// <paramref name="models"/> the game has.
+    /// Makes the pile a Raw Meat machine with no storage of its own: its functionality (<see cref="PileWork"/>) linked, the stand-in's inventory
+    /// dropped. Nothing when the game has no Raw Meat (the pile is then plain scenery and hunts drop their meat by it).
     /// </summary>
-    static FcsRecord Copy(GameDatabase game, string id, string name, string look, string[] models, string text, bool keepFunction)
+    static IEnumerable<FcsRecord> MeatOutput(GameDatabase game, FcsRecord pile)
+    {
+        pile.Bools["has inventory"] = false;
+        foreach (string size in StorageInts) pile.Ints.Remove(size);
+        pile.References["limit inventory"] = [];
+        if (Meat(game) is not { } meat) yield break;
+
+        var work = HusbandryData.New(PileWork, FcsRecordType.BuildingFunctionality, "Bone Pile");
+        work.Ints["function"] = MachineData.RefineryFunction;
+        work.Ints["max operators"] = 0;
+        work.Floats["production mult"] = 0;
+        work.Bools["is production building"] = true;
+        work.References["produces"] = [new FcsReference(meat, MeatHeld, 100, 0)];
+        pile.References["functionality"] = [new FcsReference(PileWork, 0, 0, 0)];
+        yield return work;
+    }
+
+    /// <summary>
+    /// The game's Raw Meat ITEM (the lowest id when several share the name), or null.
+    /// </summary>
+    static string? Meat(GameDatabase game) =>
+        game.OfType(FcsRecordType.Item)
+            .Where(r => r.Name == Training.Hunting.MeatName)
+            .Select(r => r.StringId)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+    /// <summary>
+    /// The building in the build menu's Husbandry category with its own name and text: a copy of its own look when the data has it, else of the
+    /// first of <paramref name="models"/> the game has.
+    /// </summary>
+    static FcsRecord Copy(GameDatabase game, string id, string name, string look, string[] models, string text)
     {
         var standIn = models.Select(m => Model(game, m)).FirstOrDefault(m => m is not null)
             ?? throw new InvalidOperationException($"The game data has none of the BUILDINGs {string.Join(", ", models)} for the {name}.");
@@ -66,35 +116,18 @@ public static class TrainingData
         HusbandryData.CopyFields(model, record);
         foreach (string list in model.ReferenceLists)
         {
-            if (list == "functionality" && !keepFunction) continue;
+            if (list == "functionality") continue;
 
             record.References[list] = [.. model.GetReferences(list).Select(HusbandryData.Link)];
         }
 
-        if (model != standIn) KeepFromStandIn(standIn, record, keepFunction);
+        if (model != standIn) Links(standIn, record, "construction");
 
         record.Strings["building category"] = HusbandryData.Category;
         record.Strings["building group"] = "";
         record.Strings["Description"] = HusbandryText.Get(text);
         record.Bools["creates player town"] = true;
         return record;
-    }
-
-    /// <summary>
-    /// A building on its own look keeps the stand-in's build cost, and the pile its storage, so only the look changes.
-    /// </summary>
-    static void KeepFromStandIn(GameRecord standIn, FcsRecord record, bool keepFunction)
-    {
-        Links(standIn, record, "construction");
-        if (!keepFunction) return;
-
-        foreach (string list in StorageLists) Links(standIn, record, list);
-        record.Bools["has inventory"] = standIn.GetBool("has inventory");
-        foreach (string size in StorageInts)
-        {
-            if (standIn.Ints.TryGetValue(size, out int value)) record.Ints[size] = value;
-            else record.Ints.Remove(size);
-        }
     }
 
     /// <summary>
