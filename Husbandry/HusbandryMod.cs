@@ -1,4 +1,5 @@
 using System.Numerics;
+using AnimalBehaviors;
 using Husbandry.Capsules;
 using Husbandry.Training;
 using Meitou.Data.Fcs;
@@ -13,10 +14,10 @@ using Meitou.Simulation.Production;
 namespace Husbandry;
 
 /// <summary>
-/// Husbandry's entry (docs/husbandry.md): the Hitching Post job, the system that keeps pens, breeds and runs the Beastmaster of Mourn (and any the
-/// debug menu puts at a settlement), the trade window's gender patch, the settings and the debug rows. Its records are added in the data phase
-/// from the loaded game's own (<see cref="HusbandryData"/>), so the shipped Husbandry.mod is empty. Also the framework other mods extend with
-/// animal kinds and trainable skills (<see cref="IHusbandryApi"/>, docs/depending-on-husbandry.md).
+/// Husbandry's entry (docs/husbandry.md), built on Animal Behaviors (the supported animals, sexes and the Hitched job its Hitching Post offers):
+/// the system that breeds, trains and runs the Beastmaster of Mourn (and any the debug menu puts at a settlement), the capsules, the settings
+/// and the debug rows. Its records are added in the data phase from the loaded game's own (<see cref="HusbandryData"/>), so the shipped
+/// Husbandry.mod is empty. Also the framework other mods extend with trainable skills (<see cref="IHusbandryApi"/>, docs/depending-on-husbandry.md).
 /// </summary>
 public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDependents
 {
@@ -36,14 +37,19 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     HusbandrySystem? _latest;
 
     /// <summary>
-    /// The animal kinds and trainable skills, Husbandry's own and its dependents'.
+    /// The trainable skills, Husbandry's own and its dependents', and what each animal may do (Animal Behaviors' list).
     /// </summary>
-    readonly AnimalRegistry _registry = new();
+    readonly AnimalRegistry _registry;
 
     /// <summary>
-    /// Every RACE of the loaded data, for the list of supported animals.
+    /// Animal Behaviors, the framework Husbandry builds on: the supported animals, sexes and the Hitched job.
     /// </summary>
-    List<(string StringId, string Name, bool Robot)> _races = [];
+    IAnimalBehaviorsApi? _animals;
+
+    /// <summary>
+    /// The mod, its registry reading support from Animal Behaviors once <see cref="Initialize"/> has it.
+    /// </summary>
+    public HusbandryMod() => _registry = new AnimalRegistry(race => _animals?.SupportOf(race) ?? AnimalSupport.All);
 
     /// <summary>
     /// The throw's COMBAT_TECHNIQUE (<see cref="ThrowData"/>); null when the data phase did not add it (the throw then plays nothing).
@@ -77,44 +83,39 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
 
     public void Initialize(ModContext c)
     {
+        _animals = c.Dependency<IAnimalBehaviorsApi>(AnimalBehaviorsMod.Id)
+            ?? throw new InvalidOperationException("Husbandry needs Animal Behaviors (animal.behaviors).");
         c.AddSettings(Settings);
         if (c.Data.Find(HusbandryData.Capsule) is null) c.LogError("Husbandry's records are missing: the data phase did not add them (see the log).");
 
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
-        c.AddJobType(Hitches.Type, HusbandryText.Get(Hitches.Name));
-        c.AddJobOffer(Hitches.Offer);
         AddTraining(c);
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
         _throwMove = c.Data.Find(ThrowData.Technique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
         c.AddUi(new StatusUi(() => _latest?.Status));
+        c.AddUi(new HitchingPostWindow(() => _latest?.Roster));
         c.AddUi(new CapsuleUi(() => _latest?.Throws, at => c.PlayEffect(MistEffect, at, MistSeconds, MistTint)));
         c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
         c.AddDebugCommand("Husbandry: capsules", _ => Told(c, _latest?.CapsuleView ?? NoWorld));
-        c.AddDebugCommand("Husbandry: supported animals", _ => Told(c, string.Join(Environment.NewLine, _registry.Describe(_races))));
         c.AddDebugCommand(SettlementTraderRow.Label, d => Told(c, SettlementTraderRow.Run(d, _latest?.Outposts)), hasField: true);
         c.AddDebugCommand("Husbandry: try breeding now", d =>
         {
             d.Enqueue(new BreedNowCommand { Tick = d.Tick });
             return "Every paired female tries at the next check.";
         });
-        _races = Races(c);
     }
 
     /// <summary>
-    /// A world's system; the first ends registration and logs the list of supported animals.
+    /// A world's system, on that world's Animal Behaviors state (its factory runs first); the first ends registration.
     /// </summary>
     HusbandrySystem Build(ModContext c, SystemBuildContext context)
     {
-        if (!_registry.Frozen)
-        {
-            _registry.Freeze();
-            c.Log("husbandry: supported animals: " + string.Join("; ", _registry.Describe(_races)));
-        }
-
-        return new HusbandrySystem(context, Settings, _registry, c.RngPurpose, c.Log, _throwMove);
+        _registry.Freeze();
+        var animals = _animals!.Current ?? throw new InvalidOperationException("Animal Behaviors built no state for this world.");
+        return new HusbandrySystem(context, Settings, _animals.Settings, animals, _registry, c.RngPurpose, c.Log, _throwMove);
     }
 
     /// <summary>
@@ -139,21 +140,9 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddJobOffer(Hunting.Offer);
     }
 
-    /// <summary>
-    /// Every RACE of the loaded data (mods' too): its string id, name and whether it is a robot.
-    /// </summary>
-    static List<(string StringId, string Name, bool Robot)> Races(ModContext c) =>
-        c.Records((int)FcsRecordType.Race)
-            .Select(r => (r.StringId, r.Name, r.GetBool("is robot")))
-            .ToList();
-
     #region Framework
 
     public IHusbandryRegistry For(ModContext c) => new Registration(this, c);
-
-    public AnimalSupport SupportOf(RaceData race) => _registry.SupportOf(race);
-
-    public IReadOnlyList<AnimalKind> Kinds => _registry.Kinds;
 
     public IReadOnlyList<TrainableSkill> Skills => _registry.Skills;
 
@@ -164,8 +153,6 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     /// </summary>
     sealed class Registration(HusbandryMod husbandry, ModContext c) : IHusbandryRegistry
     {
-        public void AddAnimal(AnimalKind kind) => husbandry._registry.AddKind(c.Id, kind);
-
         public TrainableSkill AddSkill(ModSkill skill, TaskType trainingType, IReadOnlyCollection<string>? races = null)
         {
             if (husbandry._registry.Frozen) throw new InvalidOperationException("Husbandry takes registrations only in a mod's Initialize.");

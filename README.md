@@ -1,9 +1,11 @@
 # Husbandry
 
-Hitching posts and breeding for the player's animals in [MeitouClient](https://github.com/Meitou-Modding-Ecosystem/MeitouClient). Mod id
-`husbandry`, no dependencies; what it does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.0-or-later.
+Hitching posts, breeding, animal training and capsules for the player's animals in
+[MeitouClient](https://github.com/Meitou-Modding-Ecosystem/MeitouClient). Mod id `husbandry`, built on
+[Animal Behaviors](https://github.com/Meitou-Modding-Ecosystem/AnimalBehaviors) (`animal.behaviors`, locked in `meitou.lock.json`); what it
+does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.0-or-later.
 
-- Adding animals or Training Post skills from your own mod: [docs/depending-on-husbandry.md](docs/depending-on-husbandry.md) (agent skill
+- Adding Training Post skills from your own mod (animals are registered with Animal Behaviors): [docs/depending-on-husbandry.md](docs/depending-on-husbandry.md) (agent skill
   `.claude/skills/husbandry-dependent`).
 
 - Build and run locally with Visual Studio, VS Code or the terminal (this repo's engine or the installed launcher, deployed to the game): [docs/play.md](docs/play.md).
@@ -24,7 +26,6 @@ Block 4500-4599
 
 | Number | Pool | Use |
 | --- | --- | --- |
-| 4501 | Task type | Job: Hitching (offered on the Hitching Post, animals) |
 | 4510-4515 | Task type | Jobs: Training Fetch, Guard, Hunt, Scout, Pack, Tie up (offered on the Training Post, animals) |
 | 4520 | Task type | Job: Fetching (offered on every storage, animals) |
 | 4521 | Task type | Job: Guarding (offered on the Pet Station, animals) |

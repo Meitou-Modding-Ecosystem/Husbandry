@@ -1,3 +1,4 @@
+using AnimalBehaviors;
 using Meitou.Data;
 using Meitou.Data.Fcs;
 
@@ -57,6 +58,11 @@ public static class HusbandryData
     /// the loaded data has it.
     /// </summary>
     public const string PostLook = "900400-" + FileName;
+
+    /// <summary>
+    /// The most animals the Hitching Post holds (Animal Behaviors' hitch capacity, docs/husbandry.md "Hitching Post").
+    /// </summary>
+    public const int HitchCapacity = 6;
 
     /// <summary>
     /// The post's text in the build menu.
@@ -138,7 +144,8 @@ public static class HusbandryData
 
     /// <summary>
     /// The post: its own model's look (<see cref="PostLook"/>) when the data has it, else the stand-in's, with the stand-in's build cost and
-    /// without its function (the cage), in the build menu's Husbandry category, with its own text.
+    /// without its function (the cage), in the build menu's Husbandry category, with its own text, marked as an Animal Behaviors hitching post
+    /// holding <see cref="HitchCapacity"/> animals.
     /// </summary>
     static FcsRecord PostRecord(GameDatabase game, GameRecord standIn)
     {
@@ -158,6 +165,7 @@ public static class HusbandryData
         record.Strings["building group"] = "";
         record.Strings["Description"] = HusbandryText.Get(PostText);
         record.Bools["creates player town"] = true;
+        Sites.MarkHitch(record, HitchCapacity);
         return record;
     }
 

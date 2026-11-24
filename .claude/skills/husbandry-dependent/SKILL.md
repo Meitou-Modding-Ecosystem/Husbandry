@@ -5,9 +5,9 @@ description: Use when making a Meitou code mod depend on Husbandry, or adding an
 
 # Build on Husbandry
 
-Husbandry (`husbandry`) owns hitching, breeding, the Training Post and Beast Capsules. Your mod tells it which races may do what and adds
-skills the Training Post teaches; it never copies or replaces Husbandry. Read `docs/depending-on-husbandry.md` first, and
-`docs/husbandry.md` "Supported animals".
+Husbandry (`husbandry`) owns breeding, the Training Post and Beast Capsules, on Animal Behaviors (`animal.behaviors`), which owns the
+supported animals, sexes and the Hitched job. Your mod tells Animal Behaviors which races may do what and adds skills Husbandry's Training Post
+teaches; it never copies or replaces either. Read `docs/depending-on-husbandry.md` first.
 
 ## Hard rules
 
@@ -19,15 +19,15 @@ skills the Training Post teaches; it never copies or replaces Husbandry. Read `d
 
 ## Steps
 
-1. **Manifest**: `apiVersion` 3 and `"dependencies": [{ "id": "husbandry", "version": ">=0.7.0 <0.8.0" }]` (match the current
-   `Husbandry/meitou.json` minor). Tell the user Husbandry must load above the mod in `mods.cfg`.
-2. **Project**: add a `husbandry` entry to `meitou.lock.json` from the release notes of `husbandry-v<version>` (tag, asset, SHA-256,
+1. **Manifest**: `apiVersion` 3 and `"dependencies": [{ "id": "husbandry", "version": ">=0.8.0 <0.9.0" }]` (match the current
+   `Husbandry/meitou.json` minor), plus `animal.behaviors` when you register animals. Tell the user Husbandry must load above the mod in `mods.cfg`.
+2. **Project**: add the `animal.behaviors` and `husbandry` entries to `meitou.lock.json` from the release notes of `husbandry-v<version>` (tag, asset, SHA-256,
    folder `Husbandry`, engine commit), and move `engine/` to that commit.
-3. **Animals**: `AddAnimal(new AnimalKind(race, support, note))`, race = RACE string id (preferred for your own races) or name (vanilla).
+3. **Animals**: `c.Dependency<IAnimalBehaviorsApi>("animal.behaviors")!.For(c).AddAnimal(new AnimalKind(race, support, note))`, race = RACE string id (preferred for your own races) or name (vanilla).
    Flags: `Breeding`, `Training`, `Taming`, `Summoning`, `All`, `None`. The last registration for a race wins.
 4. **Skills**: `AddSkill(new ModSkill(id, "Beast: X", column) { Description, Start = 0 }, (TaskType)n, races)`; Husbandry registers the skill,
    the "Training X" job and the "Train: X" offer under your mod. Write the skill's effect in your own `AddSystem` system: read it with
    `AnimalSkills.Has` / `Level`, train it by use with `AnimalSkills.Gain`.
 5. **Docs**: list the mod's kinds and skills in its own docs; a change to Husbandry's API updates `docs/depending-on-husbandry.md`,
    `docs/husbandry.md` and this skill, and bumps Husbandry's minor version.
-6. **Check**: `dotnet build`, `dotnet test`; in game F10 **Husbandry: supported animals**, and the Training Post's menu shows "Train: X".
+6. **Check**: `dotnet build`, `dotnet test`; in game F10 **Animal Behaviors: supported animals**, and the Training Post's menu shows "Train: X".

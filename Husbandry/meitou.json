@@ -1,8 +1,9 @@
 {
   "id": "husbandry",
-  "version": "0.7.12",
+  "version": "0.8.0",
   "apiVersion": 3,
   "gameVersion": ">=0.22.2 <0.23.0",
+  "dependencies": { "animal.behaviors": ">=0.1.0 <0.2.0" },
   "assemblies": ["Husbandry.dll"],
   "entry": "Husbandry.HusbandryMod"
 }

@@ -13,7 +13,7 @@ public sealed class ClaimedNumbersTests
         var listed = NumbersTests.Listed();
         int[] claimed =
         [
-            (int)Hitches.Type, (int)Fetching.Type, (int)Guarding.Type, (int)Hunting.Type, (int)Trainers.Type,
+            (int)Fetching.Type, (int)Guarding.Type, (int)Hunting.Type, (int)Trainers.Type,
             .. Enumerable.Range(0, AnimalSkills.All.Length).Select(i => (int)TrainingPost.TypeOf(i)),
         ];
 

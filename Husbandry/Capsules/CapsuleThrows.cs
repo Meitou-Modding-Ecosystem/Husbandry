@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Numerics;
+using AnimalBehaviors;
 using Husbandry.Training;
 using Meitou.Data.Gameplay.Combat;
 using Meitou.Simulation;
