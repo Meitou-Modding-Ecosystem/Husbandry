@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Meitou.Content;
 using Husbandry.Training;
 using Meitou.Modding;
 
@@ -22,6 +23,20 @@ public sealed class ManifestTests
         Assert.True(typeof(IHusbandryApi).IsAssignableFrom(entry));
         Assert.True(typeof(IModDependents).IsAssignableFrom(entry));
         Assert.Equal(HusbandryMod.Id, root.GetProperty("id").GetString());
+    }
+
+    /// <summary>
+    /// The engine's own reader accepts the manifest (a malformed one refuses the mod in game), and it depends on Animal Behaviors.
+    /// </summary>
+    [Fact]
+    public void The_engine_reads_the_manifest_and_its_dependency()
+    {
+        var manifest = CodeModManifest.Read(Path.Combine(AppContext.BaseDirectory, "meitou.json"));
+
+        var dependency = Assert.Single(manifest.DependsOn);
+        Assert.Equal(AnimalBehaviors.AnimalBehaviorsMod.Id, dependency.Id);
+        Assert.False(dependency.Optional);
+        Assert.NotNull(dependency.Range);
     }
 
     [Fact]
