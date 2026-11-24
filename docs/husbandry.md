@@ -105,8 +105,15 @@ width. Textures are shrunk to 2048.
 
 - **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
-  with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and gains 1 a game hour, 2 while a standing person of the
-  player's is within 200 units (about ten hours alone from 0 to 10).
+  with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and learns only from a trainer.
+- **Trainers** (job 4523 "Training animals", **Train animals here** on the Training Post, people; `Trainers`): while an animal of the player's
+  holds a training job on the post, the trainer walks to 30 units in front of it and works there (a job of the chooser, `IJobSource`; it stands
+  down when no animal trains there). Each working trainer trains one animal of the post (animals and trainers in slot order); an animal without
+  one floats "Waiting for a trainer" each game hour. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
+  `husbandry.handling`, people start at 1) rising in a line to 0.8 at 50 or more: about two game days, or half a day, from 0 to 10. The
+  trainer gains 0.5 Animal Handling a game hour. **Treats** (`Treats`): at each game hour mark the trainer feeds one Raw Meat, from its own
+  inventory (and backpack) first, else from the nearest finished storage of the player's within 300 units of the post; with none at hand the
+  animal learns at half rate and the trainer floats "No Raw Meat for treats".
 - **Fetch** (job 4520 "Fetching", offered on every storage building of the merged data as **Fetch for here**): an idle animal free of the
   player's orders carries the output of the player's finished machines within 3000 units of the storage that the storage takes, nearest machine
   first, into the storage. It carries in its pack only (a live animal's main grid takes nothing, engine `Inventory.Add` `mainShut`), so without a

@@ -159,6 +159,11 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     }
 
     /// <summary>
+    /// The meat record's string id (the Training Post's treats too); empty without a population or when the game has no meat.
+    /// </summary>
+    public string MeatId => population is null ? "" : Meat();
+
+    /// <summary>
     /// The meat record, found by name once.
     /// </summary>
     string Meat()

@@ -29,6 +29,7 @@ Block 4500-4599
 | 4520 | Task type | Job: Fetching (offered on every storage, animals) |
 | 4521 | Task type | Job: Guarding (offered on the Pet Station, animals) |
 | 4522 | Task type | Job: Hunting (offered on the Bone Pile, animals) |
+| 4523 | Task type | Job: Training animals (offered on the Training Post, people) |
 
 ## Layout
 

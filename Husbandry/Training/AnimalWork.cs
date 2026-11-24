@@ -97,24 +97,6 @@ public static class AnimalWork
     }
 
     /// <summary>
-    /// How far the nearest standing person (not an animal) of the player's is from a point; float.MaxValue when none.
-    /// </summary>
-    public static float NearestPerson(World world, Vector3 point)
-    {
-        var table = world.Characters;
-        float best = float.MaxValue;
-        for (int s = 0; s < table.HighWater; s++)
-        {
-            if (!table.Next[s].Alive || table.Cold(s) is not { IsPlayer: true, DiedTick: < 0 } c) continue;
-            if (SquadRegistry.IsAnimal(c) || Hitches.Down(c)) continue;
-
-            best = Math.Min(best, Away(world, s, point));
-        }
-
-        return best;
-    }
-
-    /// <summary>
     /// A walkable spot round a centre between <paramref name="min"/> and <paramref name="max"/> away, from a roll; null when none of a few tries is.
     /// </summary>
     public static Vector3? Spot(World world, Vector3 centre, float min, float max, ulong roll)
