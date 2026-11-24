@@ -84,5 +84,17 @@
   "Animal Handling": "Dressage",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "La vitesse à laquelle cette personne dresse les animaux au poteau de dressage : un animal apprend quatre fois plus vite avec un dresseur à 50 qu'avec un dresseur à 1.",
   "Waiting for a trainer": "Attend un dresseur",
-  "No Raw Meat for treats: training at half speed": "Pas de viande crue en friandise : dressage à mi-vitesse"
+  "No Raw Meat for treats: training at half speed": "Pas de viande crue en friandise : dressage à mi-vitesse",
+  "Trained by {1}": "Dressé par {1}",
+  "{1}: {2}": "{1} : {2}",
+  "Trainer {1}": "Dresseur {1}",
+  "Resting": "Au repos",
+  "Out hunting": "En chasse",
+  "Coming back": "Sur le retour",
+  "{1} h": "{1} h",
+  "{1}: next litter": "{1} : prochaine portée",
+  "Breeds with a male of her kind hitched here": "Se reproduit avec un mâle de son espèce attaché ici",
+  "Crafting {1}": "Fabrique : {1}",
+  "No one at the bench": "Personne à l'établi",
+  "Crafter {1}": "Artisan {1}"
 }

@@ -84,5 +84,17 @@
   "Animal Handling": "동물 다루기",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "이 사람이 훈련 말뚝에서 동물을 훈련하는 속도: 50인 훈련사에게서는 1인 훈련사보다 네 배 빠르게 배운다.",
   "Waiting for a trainer": "훈련사를 기다리는 중",
-  "No Raw Meat for treats: training at half speed": "간식용 생고기가 없음: 훈련 속도 절반"
+  "No Raw Meat for treats: training at half speed": "간식용 생고기가 없음: 훈련 속도 절반",
+  "Trained by {1}": "훈련사: {1}",
+  "{1}: {2}": "{1}: {2}",
+  "Trainer {1}": "훈련사 {1}",
+  "Resting": "휴식 중",
+  "Out hunting": "사냥 나감",
+  "Coming back": "돌아오는 중",
+  "{1} h": "{1}시간",
+  "{1}: next litter": "{1}: 다음 출산",
+  "Breeds with a male of her kind hitched here": "여기 묶인 같은 종의 수컷과 번식한다",
+  "Crafting {1}": "제작 중: {1}",
+  "No one at the bench": "작업대에 아무도 없음",
+  "Crafter {1}": "제작자 {1}"
 }

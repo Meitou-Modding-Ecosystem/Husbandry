@@ -2,6 +2,7 @@ using System.Numerics;
 using Meitou.Data.Fcs;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
+using Meitou.Simulation.Bodies;
 using Meitou.Simulation.Population;
 using Meitou.Simulation.Production;
 
@@ -14,6 +15,17 @@ namespace Husbandry.Training;
 /// </summary>
 public sealed class Hunting(PopulationSystem? population, Action<string> log)
 {
+    /// <summary>
+    /// One hunter at the last check, for the building panel (<see cref="BuildingStatus"/>): its pile, the animal, how far round its cycle it is
+    /// (<see cref="Progress"/>) and what it is doing (English, for <see cref="HusbandryText"/>).
+    /// </summary>
+    public readonly record struct View(string Site, CharacterCold Animal, float Progress, string Doing);
+
+    /// <summary>
+    /// The hunters of the last check.
+    /// </summary>
+    public IReadOnlyList<View> Views { get; private set; } = [];
+
     /// <summary>
     /// The job's task type.
     /// </summary>
@@ -82,6 +94,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
         if (population is null) return;
 
         var progress = new Dictionary<string, float>();
+        var views = new List<View>();
         foreach (var w in AnimalWork.Holders(world, Types))
         {
             if (AnimalWork.Refused(world, w, AnimalSkills.Hunt)) continue;
@@ -90,9 +103,12 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
             var hunt = _hunts.GetValueOrDefault(serial, (Leg.Resting, world.GameHours + RestHours(w)));
             hunt = Step(world, w, hunt, settings, purpose);
             _hunts[serial] = hunt;
-            progress[w.Site.Id] = Math.Max(progress.GetValueOrDefault(w.Site.Id), Progress(world, w, hunt));
+            float done = Progress(world, w, hunt);
+            progress[w.Site.Id] = Math.Max(progress.GetValueOrDefault(w.Site.Id), done);
+            views.Add(new View(w.Site.Id, w.Cold, done, Doing(hunt.Item1)));
         }
 
+        Views = views;
         ShowProgress(world, progress);
     }
 
@@ -111,6 +127,16 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
         float done = (float)Math.Clamp(1 - (hunt.Until - world.GameHours) / hours, 0, 1);
         return from + (to - from) * done;
     }
+
+    /// <summary>
+    /// What a hunter on a leg is doing, as the panel says it.
+    /// </summary>
+    static string Doing(Leg leg) => leg switch
+    {
+        Leg.Resting => "Resting",
+        Leg.Out => "Out hunting",
+        _ => "Coming back",
+    };
 
     /// <summary>
     /// Sets each pile's output progress to its furthest hunter's (a pile with no hunter, or a full one, shows none).

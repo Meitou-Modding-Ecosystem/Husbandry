@@ -35,7 +35,7 @@ public static class Guarding
     /// <summary>
     /// The job set, for <see cref="AnimalWork.Holders"/>.
     /// </summary>
-    static readonly HashSet<TaskType> Types = [Type];
+    public static readonly HashSet<TaskType> Types = [Type];
 
     /// <summary>
     /// The job as the station offers it to animals.
