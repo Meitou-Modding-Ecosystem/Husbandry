@@ -103,6 +103,10 @@ Husbandry building shows in the build menu). Play's structure import ([structure
 the art prompts' sizes (project file `husbandry-training/art-prompts.md`) times 1.2, as for the Bathhouse's pieces, the Pet Station by its
 width. Textures are shrunk to 2048.
 
+The Hitching Post's look is `Husbandry/Structures/hitching-post.glb` (building 900400-Husbandry.mod, 1.3 m, the model's own height), on the
+Prisoner Pole's build cost. Its textures stay at 4096 (`textureSize` in `hitching-post.json`): the badger painted on the sign is baked in many
+small pieces across the atlas, and 2048 blurs it. Concept art: `concept-art/post-*.png`.
+
 - **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
   with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and learns only from a trainer.
