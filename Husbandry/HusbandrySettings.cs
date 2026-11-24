@@ -1,3 +1,4 @@
+using AnimalBehaviors;
 using Meitou.Modding;
 
 namespace Husbandry;
@@ -7,20 +8,6 @@ namespace Husbandry;
 /// </summary>
 public sealed class HusbandrySettings
 {
-    /// <summary>
-    /// The pen's radius round a post, in game units (about 10 cm each). 100 is a circle the area of four large farms (a large farm's crop grid is
-    /// about 90 x 90).
-    /// </summary>
-    [Setting("Pen radius", Hint = "How far hitched animals may roam from their post, in game units (100 = four large farms).",
-        Min = 30, Max = 600, Step = 10)]
-    public int PenRadius { get; set; } = 100;
-
-    /// <summary>
-    /// Whether hitched animals stroll about inside the pen while idle.
-    /// </summary>
-    [Setting("Grazing", Hint = "Idle hitched animals wander about inside their pen.")]
-    public bool Grazing { get; set; } = true;
-
     /// <summary>
     /// Whether hitched pairs breed.
     /// </summary>

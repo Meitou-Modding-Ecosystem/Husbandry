@@ -1,4 +1,5 @@
 using System.Numerics;
+using AnimalBehaviors;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
 using Meitou.Simulation.Ai;
@@ -82,7 +83,7 @@ public static class AnimalWork
     /// Floats a line of text over a character.
     /// </summary>
     public static void Say(World world, int slot, string text) =>
-        world.Floaters?.Enqueue(Floater.Label(world.Characters.Next[slot].Position + new Vector3(0, 20, 0), text));
+        world.Floaters?.Enqueue(Floater.Label(world.Characters.Next[slot].Position + new Vector3(0, 20, 0), HusbandryText.Get(text)));
 
     /// <summary>
     /// Takes a job off an animal that has not unlocked its skill, telling the player; true when it did.
@@ -92,26 +93,8 @@ public static class AnimalWork
         if (AnimalSkills.Has(w.Cold, skill)) return false;
 
         w.Cold.Jobs.RemoveAll(j => j.Type == w.Type);
-        Say(world, w.Slot, $"Needs {TrainingPost.Short(skill)} {AnimalSkills.Unlocked:0}: train it at a Training Post");
+        Say(world, w.Slot, HusbandryText.Format("Needs {1} {2}: train it at a Training Post", HusbandryText.Get(TrainableSkill.ShortOf(skill.Label)), (int)AnimalSkills.Unlocked));
         return true;
-    }
-
-    /// <summary>
-    /// How far the nearest standing person (not an animal) of the player's is from a point; float.MaxValue when none.
-    /// </summary>
-    public static float NearestPerson(World world, Vector3 point)
-    {
-        var table = world.Characters;
-        float best = float.MaxValue;
-        for (int s = 0; s < table.HighWater; s++)
-        {
-            if (!table.Next[s].Alive || table.Cold(s) is not { IsPlayer: true, DiedTick: < 0 } c) continue;
-            if (SquadRegistry.IsAnimal(c) || Hitches.Down(c)) continue;
-
-            best = Math.Min(best, Away(world, s, point));
-        }
-
-        return best;
     }
 
     /// <summary>

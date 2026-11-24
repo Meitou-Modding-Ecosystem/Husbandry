@@ -60,9 +60,9 @@ public static class AnimalSkills
     /// <summary>
     /// The guard bonus: +30 melee attack and defence while near its station.
     /// </summary>
-    public static readonly StatusEffect Guarding = new("husbandry.guarding", "Guarding home")
+    public static readonly StatusEffect Guarding = new("husbandry.guarding", HusbandryText.Get("Guarding home"))
     {
-        Description = "Near its Pet Station: +30 melee attack and defence.",
+        Description = HusbandryText.Get("Near its Pet Station: +30 melee attack and defence."),
         Tone = StatusEffectTone.Good,
         Modifiers = [new(StatsEnumerated.MeleeAttack, 30), new(StatsEnumerated.MeleeDefence, 30)],
     };
@@ -70,9 +70,9 @@ public static class AnimalSkills
     /// <summary>
     /// The pack bonus: +3 strength a stack, a stack per 10 levels of Pack.
     /// </summary>
-    public static readonly StatusEffect PackTrained = new("husbandry.pack", "Pack trained")
+    public static readonly StatusEffect PackTrained = new("husbandry.pack", HusbandryText.Get("Pack trained"))
     {
-        Description = "Trained to carry: +3 strength for every 10 levels of Pack.",
+        Description = HusbandryText.Get("Trained to carry: +3 strength for every 10 levels of Pack."),
         Tone = StatusEffectTone.Good,
         Stacking = StatusEffectStacking.Stack,
         MaxStacks = 10,
@@ -82,9 +82,9 @@ public static class AnimalSkills
     /// <summary>
     /// The scout bonus: +3 stealth a stack, a stack per 10 levels of Scout.
     /// </summary>
-    public static readonly StatusEffect ScoutTrained = new("husbandry.scout", "Scout trained")
+    public static readonly StatusEffect ScoutTrained = new("husbandry.scout", HusbandryText.Get("Scout trained"))
     {
-        Description = "Trained to sneak: +3 stealth for every 10 levels of Scout.",
+        Description = HusbandryText.Get("Trained to sneak: +3 stealth for every 10 levels of Scout."),
         Tone = StatusEffectTone.Good,
         Stacking = StatusEffectStacking.Stack,
         MaxStacks = 10,
@@ -92,11 +92,10 @@ public static class AnimalSkills
     };
 
     /// <summary>
-    /// Registers the skills and the effects.
+    /// Registers the effects (the skills are registered as trainable: <see cref="HusbandryMod"/>).
     /// </summary>
     public static void Register(ModContext c)
     {
-        foreach (var skill in All) c.AddSkill(skill);
         c.AddStatusEffect(Guarding);
         c.AddStatusEffect(PackTrained);
         c.AddStatusEffect(ScoutTrained);
@@ -137,5 +136,10 @@ public static class AnimalSkills
     /// A skill that starts at 0.
     /// </summary>
     static ModSkill Skill(string id, string label, SkillColumn column, string description, string trainedBy) =>
-        new(id, label, column) { Description = description, Training = ["A Training Post", trainedBy], Start = 0 };
+        new(id, HusbandryText.Format("Beast: {1}", HusbandryText.Get(TrainableSkill.ShortOf(label))), column)
+        {
+            Description = HusbandryText.Get(description),
+            Training = [HusbandryText.Get("A Training Post"), HusbandryText.Get(trainedBy)],
+            Start = 0,
+        };
 }

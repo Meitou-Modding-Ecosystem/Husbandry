@@ -1,3 +1,4 @@
+using AnimalBehaviors;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
 using Meitou.Simulation.Factions;
@@ -35,24 +36,24 @@ public static class Guarding
     /// <summary>
     /// The job set, for <see cref="AnimalWork.Holders"/>.
     /// </summary>
-    static readonly HashSet<TaskType> Types = [Type];
+    public static readonly HashSet<TaskType> Types = [Type];
 
     /// <summary>
     /// The job as the station offers it to animals.
     /// </summary>
-    public static ModJobOffer Offer => new(Type, [HusbandryData.PetStation], "Guard here", ModJobTakers.Animals);
+    public static ModJobOffer Offer => new(Type, [HusbandryData.PetStation], HusbandryText.Get("Guard here"), ModJobTakers.Animals);
 
     /// <summary>
     /// One check: pens each guard, gives the bonus to those in range and takes it off every other animal of the player's.
     /// </summary>
-    public static void Run(World world, HusbandrySettings settings, RngPurpose purpose, double hours)
+    public static void Run(World world, AnimalSettings pens, RngPurpose purpose, double hours)
     {
         var guarding = new HashSet<int>();
         foreach (var w in AnimalWork.Holders(world, Types))
         {
             if (AnimalWork.Refused(world, w, AnimalSkills.Guard)) continue;
 
-            Pens.Keep(world, w.AsHitched, settings, purpose);
+            Pens.Keep(world, w.AsHitched, pens, purpose);
             if (AnimalWork.Away(world, w.Slot, w.Site.Position) > Range) continue;
 
             guarding.Add(w.Slot);

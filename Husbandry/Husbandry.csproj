@@ -18,6 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Husbandry.Tests" />
+    <EmbeddedResource Include="Locale/*.json" LogicalName="Husbandry.Locale.%(Filename).json" WithCulture="false" />
     <None Include="meitou.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

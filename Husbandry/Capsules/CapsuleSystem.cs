@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using AnimalBehaviors;
 using Husbandry.Training;
 using Meitou.Simulation;
 using Meitou.Simulation.Factions;
@@ -16,7 +17,7 @@ namespace Husbandry.Capsules;
 /// <see cref="ItemInstance.ModTag"/> holds its key; the animals are saved in the mod's sidecar. The clicks only queue; the serial step does the
 /// work. Serial steps only.
 /// </summary>
-public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Action<string> log)
+public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, AnimalRegistry registry, Action<string> log)
 {
     /// <summary>
     /// The start of a full capsule's tag; its key follows.
@@ -74,6 +75,11 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
     }
 
     /// <summary>
+    /// Whether a capsule holds an animal.
+    /// </summary>
+    public static bool Full(ItemInstance capsule) => Key(capsule) is not null;
+
+    /// <summary>
     /// The key a full capsule holds, or null for an empty one.
     /// </summary>
     static int? Key(ItemInstance capsule) =>
@@ -95,6 +101,19 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
             return;
         }
 
+        Put(world, user, capsule, inventory, target);
+    }
+
+    /// <summary>
+    /// Catches the beast a thrown capsule hit (<see cref="CapsuleThrows"/>): as a right click beside it would.
+    /// </summary>
+    public void CatchThrown(World world, int user, ItemInstance capsule, Inventory inventory, int target) => Put(world, user, capsule, inventory, target);
+
+    /// <summary>
+    /// Puts an animal in one capsule of the stack and takes it out of the world.
+    /// </summary>
+    void Put(World world, int user, ItemInstance capsule, Inventory inventory, int target)
+    {
         var table = world.Characters;
         var cold = table.Cold(target)!;
         bool female = sexes.Female(cold);
@@ -104,7 +123,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
         Fill(world, user, capsule, inventory, key);
         if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
 
-        AnimalWork.Say(world, user, $"Caught {cold.Name}!");
+        AnimalWork.Say(world, user, HusbandryText.Format("Caught {1}!", cold.Name));
         log($"husbandry: {table.Cold(user)!.Name} caught {cold.Name} ({cold.RecordId}) in a capsule");
         var id = table.IdOf(target);
         world.Uniques.Left(id);
@@ -112,10 +131,9 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
     }
 
     /// <summary>
-    /// The nearest animal within reach that may be caught: one of the player's, or another that is knocked out; not a robot, a leviathan, dead or
-    /// carried.
+    /// The nearest animal within reach that may be caught (<see cref="Catchable"/>).
     /// </summary>
-    static int? Target(World world, int user)
+    int? Target(World world, int user)
     {
         var table = world.Characters;
         var at = table.Next[user].Position;
@@ -136,14 +154,15 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
     }
 
     /// <summary>
-    /// Whether an animal may be caught now.
+    /// Whether an animal may be caught now: one of the player's whose race supports summoning, or a knocked-out one whose race supports taming
+    /// (docs/husbandry.md "Supported animals"); never one carried.
     /// </summary>
-    static bool Catchable(CharacterCold c)
+    public bool Catchable(CharacterCold c)
     {
-        if (!SquadRegistry.IsAnimal(c) || c.Race is not { IsRobot: false } race || !c.CarriedBy.IsNone) return false;
-        if (race.Name.Contains("Leviathan", StringComparison.OrdinalIgnoreCase)) return false;
+        if (!c.CarriedBy.IsNone) return false;
+        if (c.IsPlayer) return registry.Supports(c, AnimalSupport.Summoning);
 
-        return c.IsPlayer || c.Medical is { Unconscious: true };
+        return c.Medical is { Unconscious: true } && registry.Supports(c, AnimalSupport.Taming);
     }
 
     /// <summary>
@@ -209,7 +228,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Act
         if (cold.PortraitSerial is { } serial) sexes.Assigned[serial] = beast.Female;
         _stored.Remove(key);
         capsule.ModTag = "";
-        AnimalWork.Say(world, slot, $"{beast.Name}, come out!");
+        AnimalWork.Say(world, slot, HusbandryText.Format("{1}, come out!", beast.Name));
     }
 
     #endregion
