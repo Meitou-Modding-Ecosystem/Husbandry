@@ -117,14 +117,18 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     }
 
     /// <summary>
-    /// The animal skills (docs/husbandry.md "Training"): the skills and their effects, a training job per skill on the Training Post, and the work
-    /// jobs: Fetch on every storage, Guard on the Pet Station, Hunt on the Bone Pile.
+    /// The animal skills (docs/husbandry.md "Training"): the skills and their effects, a training job per skill and the people's trainer job (with
+    /// its Animal Handling skill) on the Training Post, and the work jobs: Fetch on every storage, Guard on the Pet Station, Hunt on the Bone Pile.
     /// </summary>
     void AddTraining(ModContext c)
     {
         AnimalSkills.Register(c);
         var own = For(c);
         foreach (var (index, skill) in AnimalSkills.All.Index()) own.AddSkill(skill, TrainingPost.TypeOf(index));
+
+        c.AddSkill(Trainers.Handling);
+        c.AddJobType(Trainers.Type, HusbandryText.Get(Trainers.Name));
+        c.AddJobOffer(Trainers.Offer);
 
         c.AddJobType(Fetching.Type, HusbandryText.Get(Fetching.Name));
         c.AddJobOffer(Fetching.Offer(c.Data, c.Records((int)FcsRecordType.Building)));

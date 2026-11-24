@@ -5,6 +5,7 @@ using Meitou.Modding;
 using Husbandry.Capsules;
 using Husbandry.Training;
 using Meitou.Simulation;
+using Meitou.Simulation.Ai;
 using Meitou.Simulation.Combat;
 using Meitou.Simulation.Population;
 
@@ -19,7 +20,7 @@ public sealed record BreedNowCommand : SimCommand;
 /// Husbandry in one world (docs/husbandry.md): the pens kept and breeding run in serial steps, the hitches and breeding clocks saved in the mod's
 /// sidecar and hashed.
 /// </summary>
-public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, ICombatHitObserver
+public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, ICombatHitObserver, IChooserOwner
 {
     #region Ticking
 
@@ -79,6 +80,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly Hunting _hunting;
 
     /// <summary>
+    /// The Training Post's trainers.
+    /// </summary>
+    readonly Trainers _trainers;
+
+    /// <summary>
     /// The Tie up knock-downs.
     /// </summary>
     readonly TieUp _tieUp;
@@ -135,6 +141,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _fetching = new Fetching(_population);
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
+        _trainers = new Trainers(registry);
         _capsules = new CapsuleSystem(_population, _sexes, registry, log);
         _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove, purpose);
         TradeWindowGender.Sexes = _sexes;
@@ -180,6 +187,8 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// </summary>
     volatile string _traderView = "Beastmaster: no world yet.";
 
+    public void Register(ChooserRegistry chooser) => chooser.Jobs(Trainers.Type, _trainers);
+
     public void Inputs(World world, IReadOnlyList<SimCommand> commands)
     {
         foreach (var command in commands)
@@ -199,6 +208,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
             if ((h.Slot + world.Tick) % PenEveryTicks == 0) Pens.Keep(world, h, settings, _purpose);
 
         _tieUp.Apply(world);
+        _trainers.Step(world);
         _capsules.Run(world);
         _throws.Run(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
@@ -230,7 +240,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     {
         double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
         _workedAt = world.GameHours;
-        TrainingPost.Run(world, _registry, settings, _purpose, hours);
+        TrainingPost.Run(world, _registry, settings, _purpose, hours, _hunting.MeatId);
         Guarding.Run(world, settings, _purpose, hours);
         _fetching.Run(world);
         _hunting.Run(world, settings, _purpose);

@@ -34,8 +34,9 @@ public static class TrainingData
     /// The texts in the build menu.
     /// </summary>
     const string PostText = "Teaches animals skills. Select your animals, right-click the post and choose what to train: Fetch, Guard, Hunt,"
-        + " Scout, Pack or Tie up. A training animal keeps to a pen round the post and learns by the hour, twice as fast with one of your people"
-        + " standing near. At level 10 it can do the work.",
+        + " Scout, Pack or Tie up. Then give one of your people Train animals here: an animal learns only while a trainer works the post with it,"
+        + " faster as the trainer's Animal Handling grows, and twice as fast with Raw Meat for treats in the trainer's pack or a storage nearby. At"
+        + " level 10 it can do the work.",
         StationText = "A home for a guard animal. Select an animal with Guard 10 or more, right-click the station and choose Guard here: it keeps"
         + " near the station and fights with +30 attack and defence within 2000 units of it.",
         PileText = "Where a hunting animal brings its kills. Select an animal with Hunt 10 or more, right-click the pile and choose Hunt from here:"
