@@ -80,6 +80,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly Hunting _hunting;
 
     /// <summary>
+    /// The bars under the buildings' Condition.
+    /// </summary>
+    public BuildingStatus Status { get; } = new();
+
+    /// <summary>
     /// The Training Post's trainers.
     /// </summary>
     readonly Trainers _trainers;
@@ -240,11 +245,12 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     {
         double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
         _workedAt = world.GameHours;
-        TrainingPost.Run(world, _registry, settings, _purpose, hours, _hunting.MeatId);
+        var lessons = TrainingPost.Run(world, _registry, settings, _purpose, hours, _hunting.MeatId);
         Guarding.Run(world, settings, _purpose, hours);
         _fetching.Run(world);
         _hunting.Run(world, settings, _purpose);
         PassiveSkills.Run(world, hours);
+        Status.Publish(world, lessons, _hunting, _breeding, _sexes, settings);
     }
 
     public void HitResolved(World world, in CombatHit hit) => _tieUp.Observe(world, hit);

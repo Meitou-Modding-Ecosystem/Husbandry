@@ -84,5 +84,17 @@
   "Animal Handling": "動物の扱い",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "訓練柱でこの人物が動物を訓練する速さ。扱い50の訓練士からは扱い1の訓練士の4倍の速さで学ぶ。",
   "Waiting for a trainer": "訓練士を待っている",
-  "No Raw Meat for treats: training at half speed": "ご褒美の生肉がない: 訓練速度半分"
+  "No Raw Meat for treats: training at half speed": "ご褒美の生肉がない: 訓練速度半分",
+  "Trained by {1}": "訓練士: {1}",
+  "{1}: {2}": "{1}: {2}",
+  "Trainer {1}": "訓練士 {1}",
+  "Resting": "休憩中",
+  "Out hunting": "狩猟に出ている",
+  "Coming back": "帰還中",
+  "{1} h": "{1}時間",
+  "{1}: next litter": "{1}: 次の出産",
+  "Breeds with a male of her kind hitched here": "ここに繋がれた同種のオスと繁殖する",
+  "Crafting {1}": "製作中: {1}",
+  "No one at the bench": "作業台に誰もいない",
+  "Crafter {1}": "製作者 {1}"
 }

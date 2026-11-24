@@ -201,6 +201,19 @@ A race's support is the last registration naming its string id, else the last na
 Other mods register kinds and skills ([depending-on-husbandry.md](depending-on-husbandry.md)). The full list for the loaded mods is debug row
 **Husbandry: supported animals**, and is logged once when the first world is built (`husbandry: supported animals: ...`).
 
+## Building panel
+
+A selected Husbandry building shows bars under its Condition (engine `AddBuildingRows`; `BuildingStatus`, rebuilt each training check, once
+a game second; at most 6 bars a building, the engine's cap):
+
+- **Training Post**: per training animal "<name>: <skill>", filled towards 10 ("7.3/10") then towards 100, tooltip its trainer or "Waiting
+  for a trainer"; under it "Trainer <name>" with Animal Handling (out of 100).
+- **Bone Pile**: per hunter "<name>: Resting / Out hunting / Coming back", its cycle as the output bar shows it, and its Hunt.
+- **Pet Station**: each guard's Guard.
+- **Hitching Post**: each hitched female's "next litter", filled over the breeding period, hours left as the value.
+- **Capsule Bench**: the current capsule's progress, and "Crafter <name>" with the bench's `stat used` while someone works it ("No one at
+  the bench" otherwise).
+
 ## Settings
 
 Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mourn (on by default).

@@ -84,5 +84,17 @@
   "Animal Handling": "Tierführung",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "Wie schnell diese Person Tiere am Trainingspfosten trainiert: Bei einem Trainer mit 50 lernt ein Tier viermal so schnell wie bei einem mit 1.",
   "Waiting for a trainer": "Wartet auf einen Trainer",
-  "No Raw Meat for treats: training at half speed": "Kein rohes Fleisch als Leckerli: Training mit halber Geschwindigkeit"
+  "No Raw Meat for treats: training at half speed": "Kein rohes Fleisch als Leckerli: Training mit halber Geschwindigkeit",
+  "Trained by {1}": "Trainiert von {1}",
+  "{1}: {2}": "{1}: {2}",
+  "Trainer {1}": "Trainer {1}",
+  "Resting": "Ruht",
+  "Out hunting": "Auf der Jagd",
+  "Coming back": "Kommt zurück",
+  "{1} h": "{1} Std.",
+  "{1}: next litter": "{1}: nächster Wurf",
+  "Breeds with a male of her kind hitched here": "Paart sich mit einem hier angebundenen Männchen ihrer Art",
+  "Crafting {1}": "Stellt her: {1}",
+  "No one at the bench": "Niemand an der Werkbank",
+  "Crafter {1}": "Hersteller {1}"
 }

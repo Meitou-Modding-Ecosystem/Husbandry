@@ -84,5 +84,17 @@
   "Animal Handling": "驯兽",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "此人在训练桩训练动物的速度：驯兽 50 的训练者教出的动物学得比驯兽 1 的快四倍。",
   "Waiting for a trainer": "等待训练者",
-  "No Raw Meat for treats: training at half speed": "没有生肉作零食：训练速度减半"
+  "No Raw Meat for treats: training at half speed": "没有生肉作零食：训练速度减半",
+  "Trained by {1}": "训练者：{1}",
+  "{1}: {2}": "{1}：{2}",
+  "Trainer {1}": "训练者 {1}",
+  "Resting": "休息中",
+  "Out hunting": "外出狩猎",
+  "Coming back": "返回中",
+  "{1} h": "{1} 小时",
+  "{1}: next litter": "{1}：下一窝",
+  "Breeds with a male of her kind hitched here": "与拴在这里的同种雄性繁殖",
+  "Crafting {1}": "正在制作：{1}",
+  "No one at the bench": "工作台无人",
+  "Crafter {1}": "制作者 {1}"
 }
