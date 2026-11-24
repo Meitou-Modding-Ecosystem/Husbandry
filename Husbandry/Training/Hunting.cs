@@ -81,14 +81,55 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     {
         if (population is null) return;
 
+        var progress = new Dictionary<string, float>();
         foreach (var w in AnimalWork.Holders(world, Types))
         {
             if (AnimalWork.Refused(world, w, AnimalSkills.Hunt)) continue;
 
             uint serial = w.Cold.PortraitSerial ?? (uint)w.Slot;
             var hunt = _hunts.GetValueOrDefault(serial, (Leg.Resting, world.GameHours + RestHours(w)));
-            _hunts[serial] = Step(world, w, hunt, settings, purpose);
+            hunt = Step(world, w, hunt, settings, purpose);
+            _hunts[serial] = hunt;
+            progress[w.Site.Id] = Math.Max(progress.GetValueOrDefault(w.Site.Id), Progress(world, w, hunt));
         }
+
+        ShowProgress(world, progress);
+    }
+
+    /// <summary>
+    /// How far round its work cycle a hunter is, as the pile's progress bar shows it: resting fills the bar to half, the run out to three quarters,
+    /// the run back to nearly full; the meat it brings home fills a slot.
+    /// </summary>
+    static float Progress(World world, Worker w, (Leg Leg, double Until) hunt)
+    {
+        var (from, to, hours) = hunt.Leg switch
+        {
+            Leg.Resting => (0f, 0.5f, RestHours(w)),
+            Leg.Out => (0.5f, 0.75f, LegHours),
+            _ => (0.75f, 0.99f, LegHours),
+        };
+        float done = (float)Math.Clamp(1 - (hunt.Until - world.GameHours) / hours, 0, 1);
+        return from + (to - from) * done;
+    }
+
+    /// <summary>
+    /// Sets each pile's output progress to its furthest hunter's (a pile with no hunter, or a full one, shows none).
+    /// </summary>
+    static void ShowProgress(World world, Dictionary<string, float> progress)
+    {
+        bool changed = false;
+        foreach (var m in world.Machines.All)
+        {
+            if (m.Data.Functionality != TrainingData.PileWork || m.Output is not { } output) continue;
+
+            float want = output.Full ? 0 : progress.GetValueOrDefault(m.Site);
+            if (output.Progress == want) continue;
+
+            output.Progress = want;
+            changed = true;
+        }
+
+        if (changed) world.Machines.Touch();
     }
 
     /// <summary>
@@ -133,16 +174,23 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     }
 
     /// <summary>
-    /// Drops the hunt's meat into the pile (on the ground by it when the pile is full) and trains Hunt; only for an animal that made it home.
+    /// Puts the hunt's meat into the pile's output (on the ground by it what does not fit) and trains Hunt; only for an animal that made it home.
     /// </summary>
     void Home(World world, Worker w)
     {
         if (AnimalWork.Away(world, w.Slot, w.Site.Position) > AnimalWork.Reach * 1.5f) return;
         int pieces = 1 + (int)(AnimalSkills.Level(w.Cold, AnimalSkills.Hunt) / 25);
-        if (Meat() is not { Length: > 0 } meat || population!.Data.Items.Create(meat, pieces) is not { } kill) return;
+        if (Meat() is not { Length: > 0 } meat) return;
 
-        var pile = world.Machines.Find(w.Site.Id)?.Storage;
-        if (pile is null || !pile.Add(kill)) world.GroundItems.Drop(kill, w.Site.Position + new Vector3(0, 5, 0), 0);
+        if (world.Machines.Find(w.Site.Id)?.Output is { } output && output.Recipe.Item == meat)
+        {
+            int fits = Math.Min(pieces, output.Recipe.Capacity - output.Count);
+            output.Count += fits;
+            pieces -= fits;
+        }
+
+        if (pieces > 0 && population!.Data.Items.Create(meat, pieces) is { } spill)
+            world.GroundItems.Drop(spill, w.Site.Position + new Vector3(0, 5, 0), 0);
 
         world.Machines.Touch();
         AnimalWork.Say(world, w.Slot, "Brought back meat");

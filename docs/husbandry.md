@@ -92,9 +92,9 @@ Animals learn six skills, each a mod skill in the stats window (`husbandry.fetch
 "Beast: ..."), 0 until trained. A skill is **unlocked at 10**; below that the animal refuses the work that needs it (the job comes off with a
 floating "Needs Fetch 10" line). Skills train on the game's curve (`ModSkill.Gain`), are saved and hashed by the engine with the character.
 The **Animal Husbandry** research also unlocks the three buildings: Training Post `30-Husbandry.mod` (no function), Pet Station `31-` (no
-function), Bone Pile `32-` (a storage). Each wears its own model when the deployed data has it, else a game building's (the stand-in):
+function), Bone Pile `32-` (a Raw Meat machine, below). Each wears its own model when the deployed data has it, else a game building's (the stand-in):
 Training Post on Training Dummy, else Prisoner Pole; Pet Station on Bedroll, else Prisoner Pole; Bone Pile on Wooden Barrel, else Storage:
-General. Build cost (and the pile's storage) always come from the stand-in (`TrainingData`). Checked once a game second; a job on a building
+General. Build cost always comes from the stand-in (`TrainingData`). Checked once a game second; a job on a building
 that is gone or not the player's comes off.
 
 Own models: `Husbandry/Structures/training-post.glb`, `pet-station.glb`, `bone-pile.glb`, each with a `.json` (`research` `none`, so only the
@@ -123,7 +123,11 @@ width. Textures are shrunk to 2048.
   of it (200 m), has the status effect **Guarding home** (+30 melee attack and defence). It trains 0.2 a game hour there, 2 in a fight.
 - **Hunt** (job 4522 "Hunting", **Hunt from here** on the Bone Pile): the animal rests in a pen round the pile, then runs to a walkable spot
   1500 to 12000 units away (1200 m), turns back on arrival or after 3 game hours, and drops raw meat (the game's ITEM named "Raw Meat"; one
-  piece plus one per 25 Hunt) into the pile, on the ground by it when full. It rests 8 game hours at Hunt 10, down to 2 at 100. +2 Hunt a hunt.
+  piece plus one per 25 Hunt) into the pile's output, on the ground by it what does not fit. It rests 8 game hours at Hunt 10, down to 2 at 100. +2 Hunt a hunt.
+  The pile has no storage of its own: it is a machine (BUILDING_FUNCTIONALITY `38-`, function 4 refinery, `production mult` 0 so it makes
+  nothing by itself, `max operators` 0 so it is automatic) whose one output slot holds 20 Raw Meat (none when the game has no item named Raw
+  Meat). Haulers and Fetch animals take from it as from any machine's output and never put anything in. Its output bar shows the furthest
+  hunter's cycle: resting fills it to half, the run out to three quarters, the run back to nearly full.
 - **Scout**: the engine lets any character sneak (the original never lets an animal: engine docs/game/animals.md); the mod turns sneaking off
   for an animal below Scout 10. A scout gets **Scout trained**, +3 stealth per 10 levels, and trains 0.3 a game hour while sneaking. It has no
   sneaking animation.
@@ -228,7 +232,7 @@ found after a load adopts its platoon's animal again.
 
 Record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`, without its cage
 function, category HUSBANDRY), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1 actions, 19 his
-shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 its ANIMATION_FILE (linked into the humanoid races' `animation files`), 36 the Capsule Bench, 37 its functionality. Every building (post, training buildings, bench) is in the build menu category
+shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 its ANIMATION_FILE (linked into the humanoid races' `animation files`), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality. Every building (post, training buildings, bench) is in the build menu category
 HUSBANDRY (`HusbandryData.Category`; the menu lists a category's name as written). The entry adds them
 in the data phase (`IModDataPhase.EditData`, engine docs/modding.md "Data phase") from the merged game data as it loads (`HusbandryData.Build`),
 so they follow the player's own game and mods and need no install at build time. The shipped `Husbandry.mod` is empty (release
