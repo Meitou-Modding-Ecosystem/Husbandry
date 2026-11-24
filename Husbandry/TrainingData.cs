@@ -53,7 +53,7 @@ public static class TrainingData
     ];
 
     /// <summary>
-    /// The building in the build menu's farming list with its own name and text: a copy of its own look when the data has it, else of the first of
+    /// The building in the build menu's Husbandry category with its own name and text: a copy of its own look when the data has it, else of the first of
     /// <paramref name="models"/> the game has.
     /// </summary>
     static FcsRecord Copy(GameDatabase game, string id, string name, string look, string[] models, string text, bool keepFunction)
@@ -73,7 +73,7 @@ public static class TrainingData
 
         if (model != standIn) KeepFromStandIn(standIn, record, keepFunction);
 
-        record.Strings["building category"] = "FARMING";
+        record.Strings["building category"] = HusbandryData.Category;
         record.Strings["building group"] = "";
         record.Strings["Description"] = HusbandryText.Get(text);
         record.Bools["creates player town"] = true;
