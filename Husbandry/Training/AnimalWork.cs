@@ -82,7 +82,7 @@ public static class AnimalWork
     /// Floats a line of text over a character.
     /// </summary>
     public static void Say(World world, int slot, string text) =>
-        world.Floaters?.Enqueue(Floater.Label(world.Characters.Next[slot].Position + new Vector3(0, 20, 0), text));
+        world.Floaters?.Enqueue(Floater.Label(world.Characters.Next[slot].Position + new Vector3(0, 20, 0), HusbandryText.Get(text)));
 
     /// <summary>
     /// Takes a job off an animal that has not unlocked its skill, telling the player; true when it did.
@@ -92,7 +92,7 @@ public static class AnimalWork
         if (AnimalSkills.Has(w.Cold, skill)) return false;
 
         w.Cold.Jobs.RemoveAll(j => j.Type == w.Type);
-        Say(world, w.Slot, $"Needs {TrainableSkill.ShortOf(skill.Label)} {AnimalSkills.Unlocked:0}: train it at a Training Post");
+        Say(world, w.Slot, HusbandryText.Format("Needs {1} {2}: train it at a Training Post", HusbandryText.Get(TrainableSkill.ShortOf(skill.Label)), (int)AnimalSkills.Unlocked));
         return true;
     }
 

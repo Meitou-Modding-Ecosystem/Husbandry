@@ -67,7 +67,7 @@ public sealed class Fetching(PopulationSystem? population)
     /// The job as a storage offers it: on every storage building of the merged data.
     /// </summary>
     public static ModJobOffer Offer(GameDatabase db, IEnumerable<GameRecord> buildings) =>
-        new(Type, [.. buildings.Where(b => MachineData.From(db, b) is { IsStorage: true }).Select(b => b.StringId)], "Fetch for here",
+        new(Type, [.. buildings.Where(b => MachineData.From(db, b) is { IsStorage: true }).Select(b => b.StringId)], HusbandryText.Get("Fetch for here"),
             ModJobTakers.Animals);
 
     /// <summary>

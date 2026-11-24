@@ -38,7 +38,7 @@ public sealed class CapsuleUi(Func<CapsuleThrows?> throws, Action<Vector3> mist)
 
         var selected = context.Selected.ToArray();
         var target = context.Target.Id;
-        return [new UiMenuVerb(Caption, () => context.Enqueue(new ThrowCapsuleCommand(selected, target) { Tick = context.Tick }))];
+        return [new UiMenuVerb(HusbandryText.Get(Caption), () => context.Enqueue(new ThrowCapsuleCommand(selected, target) { Tick = context.Tick }))];
     }
 
     /// <summary>

@@ -35,7 +35,7 @@ public static class Hitches
     /// <summary>
     /// The job as the engine offers it: on the Hitching Post, to animals (<c>AddJobOffer</c>).
     /// </summary>
-    public static ModJobOffer Offer => new(Type, [HusbandryData.Post], "Hitch here", ModJobTakers.Animals);
+    public static ModJobOffer Offer => new(Type, [HusbandryData.Post], HusbandryText.Get("Hitch here"), ModJobTakers.Animals);
 
     /// <summary>
     /// The post a character is hitched to, or null.

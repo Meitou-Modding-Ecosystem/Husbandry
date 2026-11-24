@@ -60,7 +60,7 @@ public static class TrainingPost
         if (registry.MayLearn(w.Cold, skill)) return false;
 
         w.Cold.Jobs.RemoveAll(j => j.Type == w.Type);
-        AnimalWork.Say(world, w.Slot, $"A {w.Cold.Race?.Name ?? "beast"} can't learn {skill.Short}");
+        AnimalWork.Say(world, w.Slot, HusbandryText.Format("A {1} can't learn {2}", w.Cold.Race?.Name ?? HusbandryText.Get("beast"), HusbandryText.Get(skill.Short)));
         return true;
     }
 }

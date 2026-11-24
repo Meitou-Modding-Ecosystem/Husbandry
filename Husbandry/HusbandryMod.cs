@@ -81,7 +81,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         if (c.Data.Find(HusbandryData.Capsule) is null) c.LogError("Husbandry's records are missing: the data phase did not add them (see the log).");
 
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
-        c.AddJobType(Hitches.Type, Hitches.Name);
+        c.AddJobType(Hitches.Type, HusbandryText.Get(Hitches.Name));
         c.AddJobOffer(Hitches.Offer);
         AddTraining(c);
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
@@ -126,11 +126,11 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         var own = For(c);
         foreach (var (index, skill) in AnimalSkills.All.Index()) own.AddSkill(skill, TrainingPost.TypeOf(index));
 
-        c.AddJobType(Fetching.Type, Fetching.Name);
+        c.AddJobType(Fetching.Type, HusbandryText.Get(Fetching.Name));
         c.AddJobOffer(Fetching.Offer(c.Data, c.Records((int)FcsRecordType.Building)));
-        c.AddJobType(Guarding.Type, Guarding.Name);
+        c.AddJobType(Guarding.Type, HusbandryText.Get(Guarding.Name));
         c.AddJobOffer(Guarding.Offer);
-        c.AddJobType(Hunting.Type, Hunting.Name);
+        c.AddJobType(Hunting.Type, HusbandryText.Get(Hunting.Name));
         c.AddJobOffer(Hunting.Offer);
     }
 
@@ -167,8 +167,8 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
 
             string name = TrainableSkill.ShortOf(skill.Label);
             c.AddSkill(skill);
-            c.AddJobType(trainingType, "Training " + name);
-            c.AddJobOffer(new ModJobOffer(trainingType, [HusbandryData.TrainingPost], "Train: " + name, ModJobTakers.Animals));
+            c.AddJobType(trainingType, HusbandryText.Format("Training {1}", HusbandryText.Get(name)));
+            c.AddJobOffer(new ModJobOffer(trainingType, [HusbandryData.TrainingPost], HusbandryText.Format("Train: {1}", HusbandryText.Get(name)), ModJobTakers.Animals));
             return husbandry._registry.AddSkill(c.Id, skill, trainingType, races);
         }
     }

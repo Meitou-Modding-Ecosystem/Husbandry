@@ -40,7 +40,7 @@ public static class Guarding
     /// <summary>
     /// The job as the station offers it to animals.
     /// </summary>
-    public static ModJobOffer Offer => new(Type, [HusbandryData.PetStation], "Guard here", ModJobTakers.Animals);
+    public static ModJobOffer Offer => new(Type, [HusbandryData.PetStation], HusbandryText.Get("Guard here"), ModJobTakers.Animals);
 
     /// <summary>
     /// One check: pens each guard, gives the bonus to those in range and takes it off every other animal of the player's.

@@ -51,7 +51,7 @@ public static class CapsuleData
         var record = HusbandryData.New(HusbandryData.Capsule, FcsRecordType.Item, "Beast Capsule");
         HusbandryData.CopyFields(model, record);
         foreach (string list in model.ReferenceLists) record.References[list] = [.. model.GetReferences(list).Select(HusbandryData.Link)];
-        record.Strings["description"] = Text;
+        record.Strings["description"] = HusbandryText.Get(Text);
         record.Ints["value"] = Price;
         record.Ints["inventory footprint width"] = 1;
         record.Ints["inventory footprint height"] = 1;

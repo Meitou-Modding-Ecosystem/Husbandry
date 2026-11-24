@@ -119,7 +119,7 @@ public static class BenchData
         record.References["upgrades to"] = [];
         record.Strings["building category"] = "CRAFTING";
         record.Strings["building group"] = "";
-        record.Strings["Description"] = Text;
+        record.Strings["Description"] = HusbandryText.Get(Text);
         record.Bools["creates player town"] = true;
         return record;
     }

@@ -228,7 +228,7 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         medical.Blood = Math.Max(medical.Blood, RousedHealth);
         foreach (var part in medical.Parts.Where(p => p.IsVital)) RaisePart(part);
 
-        AnimalWork.Say(world, thrower, $"{cold.Name} broke free!");
+        AnimalWork.Say(world, thrower, HusbandryText.Format("{1} broke free!", cold.Name));
     }
 
     /// <summary>

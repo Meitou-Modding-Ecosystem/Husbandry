@@ -113,7 +113,7 @@ public static class HusbandryData
         record.Bools["blueprint only"] = false;
         record.Bools["is level upgrade"] = false;
         record.Strings["category"] = "Core";
-        record.Strings["description"] = ResearchText;
+        record.Strings["description"] = HusbandryText.Get(ResearchText);
         record.References["enable buildings"] =
         [
             new FcsReference(Post, 0, 0, 0),
@@ -141,7 +141,7 @@ public static class HusbandryData
 
         record.Strings["building category"] = "FARMING";
         record.Strings["building group"] = "";
-        record.Strings["Description"] = PostText;
+        record.Strings["Description"] = HusbandryText.Get(PostText);
         record.Bools["creates player town"] = true;
         return record;
     }
@@ -149,7 +149,7 @@ public static class HusbandryData
     /// <summary>
     /// A new record, as a mod file adds one.
     /// </summary>
-    internal static FcsRecord New(string id, FcsRecordType type, string name) => new() { StringId = id, Flags = 0x10, Name = name, RecordType = type };
+    internal static FcsRecord New(string id, FcsRecordType type, string name) => new() { StringId = id, Flags = 0x10, Name = HusbandryText.Get(name), RecordType = type };
 
     /// <summary>
     /// Copies every field of a merged record but its links.
