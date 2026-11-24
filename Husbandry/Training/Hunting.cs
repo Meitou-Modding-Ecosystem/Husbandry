@@ -1,7 +1,9 @@
 using System.Numerics;
+using AnimalBehaviors;
 using Meitou.Data.Fcs;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
+using Meitou.Simulation.Bodies;
 using Meitou.Simulation.Population;
 using Meitou.Simulation.Production;
 
@@ -14,6 +16,17 @@ namespace Husbandry.Training;
 /// </summary>
 public sealed class Hunting(PopulationSystem? population, Action<string> log)
 {
+    /// <summary>
+    /// One hunter at the last check, for the building panel (<see cref="BuildingStatus"/>): its pile, the animal, how far round its cycle it is
+    /// (<see cref="Progress"/>) and what it is doing (English, for <see cref="HusbandryText"/>).
+    /// </summary>
+    public readonly record struct View(string Site, CharacterCold Animal, float Progress, string Doing);
+
+    /// <summary>
+    /// The hunters of the last check.
+    /// </summary>
+    public IReadOnlyList<View> Views { get; private set; } = [];
+
     /// <summary>
     /// The job's task type.
     /// </summary>
@@ -72,29 +85,84 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     /// <summary>
     /// The job as the pile offers it to animals.
     /// </summary>
-    public static ModJobOffer Offer => new(Type, [HusbandryData.BonePile], "Hunt from here", ModJobTakers.Animals);
+    public static ModJobOffer Offer => new(Type, [HusbandryData.BonePile], HusbandryText.Get("Hunt from here"), ModJobTakers.Animals);
 
     /// <summary>
     /// One check of every hunting animal.
     /// </summary>
-    public void Run(World world, HusbandrySettings settings, RngPurpose purpose)
+    public void Run(World world, AnimalSettings pens, RngPurpose purpose)
     {
         if (population is null) return;
 
+        var progress = new Dictionary<string, float>();
+        var views = new List<View>();
         foreach (var w in AnimalWork.Holders(world, Types))
         {
             if (AnimalWork.Refused(world, w, AnimalSkills.Hunt)) continue;
 
             uint serial = w.Cold.PortraitSerial ?? (uint)w.Slot;
             var hunt = _hunts.GetValueOrDefault(serial, (Leg.Resting, world.GameHours + RestHours(w)));
-            _hunts[serial] = Step(world, w, hunt, settings, purpose);
+            hunt = Step(world, w, hunt, pens, purpose);
+            _hunts[serial] = hunt;
+            float done = Progress(world, w, hunt);
+            progress[w.Site.Id] = Math.Max(progress.GetValueOrDefault(w.Site.Id), done);
+            views.Add(new View(w.Site.Id, w.Cold, done, Doing(hunt.Item1)));
         }
+
+        Views = views;
+        ShowProgress(world, progress);
+    }
+
+    /// <summary>
+    /// How far round its work cycle a hunter is, as the pile's progress bar shows it: resting fills the bar to half, the run out to three quarters,
+    /// the run back to nearly full; the meat it brings home fills a slot.
+    /// </summary>
+    static float Progress(World world, Worker w, (Leg Leg, double Until) hunt)
+    {
+        var (from, to, hours) = hunt.Leg switch
+        {
+            Leg.Resting => (0f, 0.5f, RestHours(w)),
+            Leg.Out => (0.5f, 0.75f, LegHours),
+            _ => (0.75f, 0.99f, LegHours),
+        };
+        float done = (float)Math.Clamp(1 - (hunt.Until - world.GameHours) / hours, 0, 1);
+        return from + (to - from) * done;
+    }
+
+    /// <summary>
+    /// What a hunter on a leg is doing, as the panel says it.
+    /// </summary>
+    static string Doing(Leg leg) => leg switch
+    {
+        Leg.Resting => "Resting",
+        Leg.Out => "Out hunting",
+        _ => "Coming back",
+    };
+
+    /// <summary>
+    /// Sets each pile's output progress to its furthest hunter's (a pile with no hunter, or a full one, shows none).
+    /// </summary>
+    static void ShowProgress(World world, Dictionary<string, float> progress)
+    {
+        bool changed = false;
+        foreach (var m in world.Machines.All)
+        {
+            if (m.Data.Functionality != TrainingData.PileWork || m.Output is not { } output) continue;
+
+            float want = output.Full ? 0 : progress.GetValueOrDefault(m.Site);
+            if (output.Progress == want) continue;
+
+            output.Progress = want;
+            changed = true;
+        }
+
+        if (changed) world.Machines.Touch();
     }
 
     /// <summary>
     /// One animal's leg: rests until its time, runs out, turns back when it arrives or its time is up, and drops its meat at the pile.
     /// </summary>
-    (Leg, double) Step(World world, Worker w, (Leg Leg, double Until) hunt, HusbandrySettings settings, RngPurpose purpose)
+    (Leg, double) Step(World world, Worker w, (Leg Leg, double Until) hunt, AnimalSettings pens, RngPurpose purpose)
     {
         bool free = AnimalWork.Free(world, w.Slot, w.Cold);
         bool due = world.GameHours >= hunt.Until;
@@ -103,7 +171,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
             case Leg.Resting when due && free:
                 return Out(world, w, purpose) ?? (Leg.Resting, world.GameHours + 1);
             case Leg.Resting:
-                Pens.Keep(world, w.AsHitched, settings, purpose);
+                Pens.Keep(world, w.AsHitched, pens, purpose);
                 return hunt;
             case Leg.Out when free || due:
                 AnimalWork.Walk(world, w.Slot, w.Site.Position);
@@ -133,16 +201,23 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     }
 
     /// <summary>
-    /// Drops the hunt's meat into the pile (on the ground by it when the pile is full) and trains Hunt; only for an animal that made it home.
+    /// Puts the hunt's meat into the pile's output (on the ground by it what does not fit) and trains Hunt; only for an animal that made it home.
     /// </summary>
     void Home(World world, Worker w)
     {
         if (AnimalWork.Away(world, w.Slot, w.Site.Position) > AnimalWork.Reach * 1.5f) return;
         int pieces = 1 + (int)(AnimalSkills.Level(w.Cold, AnimalSkills.Hunt) / 25);
-        if (Meat() is not { Length: > 0 } meat || population!.Data.Items.Create(meat, pieces) is not { } kill) return;
+        if (Meat() is not { Length: > 0 } meat) return;
 
-        var pile = world.Machines.Find(w.Site.Id)?.Storage;
-        if (pile is null || !pile.Add(kill)) world.GroundItems.Drop(kill, w.Site.Position + new Vector3(0, 5, 0), 0);
+        if (world.Machines.Find(w.Site.Id)?.Output is { } output && output.Recipe.Item == meat)
+        {
+            int fits = Math.Min(pieces, output.Recipe.Capacity - output.Count);
+            output.Count += fits;
+            pieces -= fits;
+        }
+
+        if (pieces > 0 && population!.Data.Items.Create(meat, pieces) is { } spill)
+            world.GroundItems.Drop(spill, w.Site.Position + new Vector3(0, 5, 0), 0);
 
         world.Machines.Touch();
         AnimalWork.Say(world, w.Slot, "Brought back meat");
@@ -157,6 +232,11 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
         float level = Math.Clamp(AnimalSkills.Level(w.Cold, AnimalSkills.Hunt), AnimalSkills.Unlocked, 100);
         return 8 - 6 * (level - AnimalSkills.Unlocked) / (100 - AnimalSkills.Unlocked);
     }
+
+    /// <summary>
+    /// The meat record's string id (the Training Post's treats too); empty without a population or when the game has no meat.
+    /// </summary>
+    public string MeatId => population is null ? "" : Meat();
 
     /// <summary>
     /// The meat record, found by name once.

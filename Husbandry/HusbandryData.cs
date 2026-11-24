@@ -1,3 +1,4 @@
+using AnimalBehaviors;
 using Meitou.Data;
 using Meitou.Data.Fcs;
 
@@ -10,6 +11,11 @@ namespace Husbandry;
 /// </summary>
 public static class HusbandryData
 {
+    /// <summary>
+    /// The build menu category that lists every Husbandry building (the menu shows a category's name as it is written, as the game's FARMING).
+    /// </summary>
+    public const string Category = "HUSBANDRY";
+
     /// <summary>
     /// The data file's name; a record's id ends with it.
     /// </summary>
@@ -48,6 +54,17 @@ public static class HusbandryData
     public const string ModelId = "18913-small_changes_otto.mod", ModelName = "Prisoner Pole";
 
     /// <summary>
+    /// The building the structure import makes from Structures/hitching-post.glb (block 4 in Structures/ids.json), whose look the post takes when
+    /// the loaded data has it.
+    /// </summary>
+    public const string PostLook = "900400-" + FileName;
+
+    /// <summary>
+    /// The most animals the Hitching Post holds (Animal Behaviors' hitch capacity, docs/husbandry.md "Hitching Post").
+    /// </summary>
+    public const int HitchCapacity = 6;
+
+    /// <summary>
     /// The post's text in the build menu.
     /// </summary>
     public const string PostText = "A stout post to tether animals to. Select your animals, right-click the post and choose Hitch here: they stay"
@@ -59,7 +76,8 @@ public static class HusbandryData
     /// </summary>
     public const string ResearchText = "The basics of keeping animals at your base. Unlocks the Hitching Post: animals hitched to it keep to a pen"
         + " round it and breed when a male and a female of the same kind are there. Together with an Animal Feeder (Item Storage) to feed them, it is"
-        + " all a ranch needs. Also unlocks the Training Post, the Pet Station and the Bone Pile, to teach animals work.";
+        + " all a ranch needs. Also unlocks the Training Post, the Pet Station and the Bone Pile, to teach animals work, and the Capsule Bench, to"
+        + " make Beast Capsules.";
 
     /// <summary>
     /// Builds the data file from the game's records. Throws when the game has no <see cref="ModelName"/> building or no
@@ -74,7 +92,10 @@ public static class HusbandryData
             Author = "MeitouMods",
             Description = "Husbandry: hitching posts, breeding, animal training and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
         };
-        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), Capsules.CapsuleData.Build(game)]);
+        var capsule = Capsules.CapsuleData.Build(game);
+        Capsules.BenchData.AddRecipe(game, capsule);
+        file.Records.AddRange([ResearchRecord(), PostRecord(game, model), .. TraderData.Build(game), .. TrainingData.Build(game), capsule,
+            .. Capsules.ThrowData.Build(), .. Capsules.BenchData.Build(game)]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;
@@ -109,22 +130,26 @@ public static class HusbandryData
         record.Bools["blueprint only"] = false;
         record.Bools["is level upgrade"] = false;
         record.Strings["category"] = "Core";
-        record.Strings["description"] = ResearchText;
+        record.Strings["description"] = HusbandryText.Get(ResearchText);
         record.References["enable buildings"] =
         [
             new FcsReference(Post, 0, 0, 0),
             new FcsReference(TrainingPost, 0, 0, 0),
             new FcsReference(PetStation, 0, 0, 0),
             new FcsReference(BonePile, 0, 0, 0),
+            new FcsReference(Capsules.BenchData.Bench, 0, 0, 0),
         ];
         return record;
     }
 
     /// <summary>
-    /// The post: the model's fields and links but its function (the cage), in the build menu's farming list, with its own text.
+    /// The post: its own model's look (<see cref="PostLook"/>) when the data has it, else the stand-in's, with the stand-in's build cost and
+    /// without its function (the cage), in the build menu's Husbandry category, with its own text, marked as an Animal Behaviors hitching post
+    /// holding <see cref="HitchCapacity"/> animals.
     /// </summary>
-    static FcsRecord PostRecord(GameRecord model)
+    static FcsRecord PostRecord(GameDatabase game, GameRecord standIn)
     {
+        var model = game.Find(PostLook) ?? standIn;
         var record = New(Post, FcsRecordType.Building, "Hitching Post");
         CopyFields(model, record);
         foreach (string list in model.ReferenceLists)
@@ -134,17 +159,20 @@ public static class HusbandryData
             record.References[list] = [.. model.GetReferences(list).Select(Link)];
         }
 
-        record.Strings["building category"] = "FARMING";
+        if (model != standIn) record.References["construction"] = [.. standIn.GetReferences("construction").Select(Link)];
+
+        record.Strings["building category"] = Category;
         record.Strings["building group"] = "";
-        record.Strings["Description"] = PostText;
+        record.Strings["Description"] = HusbandryText.Get(PostText);
         record.Bools["creates player town"] = true;
+        Sites.MarkHitch(record, HitchCapacity);
         return record;
     }
 
     /// <summary>
     /// A new record, as a mod file adds one.
     /// </summary>
-    internal static FcsRecord New(string id, FcsRecordType type, string name) => new() { StringId = id, Flags = 0x10, Name = name, RecordType = type };
+    internal static FcsRecord New(string id, FcsRecordType type, string name) => new() { StringId = id, Flags = 0x10, Name = HusbandryText.Get(name), RecordType = type };
 
     /// <summary>
     /// Copies every field of a merged record but its links.

@@ -3,15 +3,21 @@ using System.Text.Json;
 namespace StructureImport;
 
 /// <summary>
-/// The string ids of one structure's records: <c>&lt;n&gt;-&lt;Mod&gt;.mod</c>, the game's form, with n from the structure's block of 100 (the
-/// building, then parts from +1, materials from +50).
+/// The string ids of one model's records: <c>&lt;n&gt;-&lt;Mod&gt;.mod</c>, the game's form, with n from the model's block of 100 counted from
+/// <paramref name="First"/>: a structure's from <see cref="Base"/> (the building, then parts from +1, materials from +50), an item model's from
+/// <see cref="ItemBase"/> (its material).
 /// </summary>
-public sealed record RecordIds(int Block, string ModFile)
+public sealed record RecordIds(int Block, string ModFile, int First = RecordIds.Base)
 {
     /// <summary>
     /// The first number used: far above the ids a mod's own data generator counts up from 1.
     /// </summary>
     public const int Base = 900000;
+
+    /// <summary>
+    /// The first number of the item models' blocks (Structures and ItemModels keep their own <c>ids.json</c>).
+    /// </summary>
+    public const int ItemBase = 950000;
 
     /// <summary>
     /// The most parts (materials) one structure may have.
@@ -34,7 +40,12 @@ public sealed record RecordIds(int Block, string ModFile)
     public string Material(int i) => Id(50 + i);
 
     /// <summary>
-    /// Whether <paramref name="stringId"/> is one the import makes in <paramref name="modFile"/> (any structure's).
+    /// An item model's MATERIAL_SPECS_CLOTHING id.
+    /// </summary>
+    public string ItemMaterial => Id(0);
+
+    /// <summary>
+    /// Whether <paramref name="stringId"/> is one the import makes in <paramref name="modFile"/> (any structure's or item model's).
     /// </summary>
     public static bool IsImported(string stringId, string modFile)
     {
@@ -45,7 +56,7 @@ public sealed record RecordIds(int Block, string ModFile)
     /// <summary>
     /// The id with number <paramref name="offset"/> in the block.
     /// </summary>
-    string Id(int offset) => $"{Base + Block * 100 + offset}-{ModFile}";
+    string Id(int offset) => $"{First + Block * 100 + offset}-{ModFile}";
 }
 
 /// <summary>
@@ -60,9 +71,15 @@ public sealed class StructureIds
     public const string FileName = "ids.json";
 
     /// <summary>
-    /// The JSON layout: indented, camelCase.
+    /// The JSON layout: indented, camelCase, LF line breaks on every OS (System.Text.Json otherwise breaks lines with the OS's newline, CRLF on
+    /// Windows, so ids.json flipped between imports on Windows and Linux).
     /// </summary>
-    static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        NewLine = "\n",
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
 
     /// <summary>
     /// The block of each model, by file name without extension.
@@ -99,6 +116,8 @@ public sealed class StructureIds
     /// </summary>
     public void Save(string folder)
     {
+        if (!Directory.Exists(folder)) return;
+
         string path = Path.Combine(folder, FileName);
         string text = JsonSerializer.Serialize(this, JsonOptions) + "\n";
         if (!File.Exists(path) || File.ReadAllText(path) != text) File.WriteAllText(path, text);

@@ -1,9 +1,12 @@
 using System.Globalization;
 using System.Text;
-using Meitou.Modding;
+using AnimalBehaviors;
 using Husbandry.Capsules;
 using Husbandry.Training;
+using Meitou.Data.Gameplay.Combat;
+using Meitou.Modding;
 using Meitou.Simulation;
+using Meitou.Simulation.Ai;
 using Meitou.Simulation.Combat;
 using Meitou.Simulation.Population;
 
@@ -18,14 +21,9 @@ public sealed record BreedNowCommand : SimCommand;
 /// Husbandry in one world (docs/husbandry.md): the pens kept and breeding run in serial steps, the hitches and breeding clocks saved in the mod's
 /// sidecar and hashed.
 /// </summary>
-public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, ICombatHitObserver
+public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, ICombatHitObserver, IChooserOwner
 {
     #region Ticking
-
-    /// <summary>
-    /// Ticks between pen checks of one animal (one game second at 30 ticks a second), staggered by slot.
-    /// </summary>
-    public const int PenEveryTicks = 30;
 
     /// <summary>
     /// Ticks between breeding passes (ten game seconds).
@@ -53,9 +51,19 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly Breeding _breeding;
 
     /// <summary>
-    /// The animals' sexes.
+    /// Animal Behaviors in this world: the sexes and the hitching posts' room.
+    /// </summary>
+    readonly IAnimalState _animals;
+
+    /// <summary>
+    /// The animals' sexes (Animal Behaviors').
     /// </summary>
     readonly Sexes _sexes;
+
+    /// <summary>
+    /// Animal Behaviors' pen settings, for the animals working at Husbandry's posts; copied at each check.
+    /// </summary>
+    readonly AnimalSettings _pens;
 
     /// <summary>
     /// The Beastmaster of Mourn and his pen.
@@ -78,6 +86,21 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly Hunting _hunting;
 
     /// <summary>
+    /// The bars under the buildings' Condition.
+    /// </summary>
+    public BuildingStatus Status { get; } = new();
+
+    /// <summary>
+    /// The animals at each Hitching Post, for its window.
+    /// </summary>
+    public PostRoster Roster { get; } = new();
+
+    /// <summary>
+    /// The Training Post's trainers.
+    /// </summary>
+    readonly Trainers _trainers;
+
+    /// <summary>
     /// The Tie up knock-downs.
     /// </summary>
     readonly TieUp _tieUp;
@@ -86,6 +109,16 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// The Beast Capsules and the animals in them.
     /// </summary>
     readonly CapsuleSystem _capsules;
+
+    /// <summary>
+    /// Capsules thrown at knocked-out beasts.
+    /// </summary>
+    readonly CapsuleThrows _throws;
+
+    /// <summary>
+    /// The animal kinds and trainable skills (docs/husbandry.md "Supported animals").
+    /// </summary>
+    readonly AnimalRegistry _registry;
 
     /// <summary>
     /// The game hours at the last training and work check; NaN before the first.
@@ -110,20 +143,25 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// <summary>
     /// A system for one world.
     /// </summary>
-    public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, RngPurpose purpose, Action<string> log)
+    public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, AnimalSettings pens, IAnimalState animals, AnimalRegistry registry,
+        RngPurpose purpose, Action<string> log, CombatTechnique? throwMove)
     {
         _settings = settings;
+        _pens = pens;
+        _animals = animals;
+        _registry = registry;
         _purpose = purpose;
         _population = context.Find<PopulationSystem>();
-        _sexes = new Sexes(purpose);
-        _breeding = new Breeding(purpose, _sexes, log);
+        _sexes = animals.Sexes;
+        _breeding = new Breeding(purpose, animals, registry, log);
         _beastmaster = new Beastmaster(_population, _sexes, log, TraderPost.Mourn);
         _outposts = new OutpostTraders(_population, _sexes, log);
         _fetching = new Fetching(_population);
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
-        _capsules = new CapsuleSystem(_population, _sexes, log);
-        TradeWindowGender.Sexes = _sexes;
+        _trainers = new Trainers(registry);
+        _capsules = new CapsuleSystem(_population, _sexes, registry, log);
+        _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove, purpose);
     }
 
     /// <summary>
@@ -147,6 +185,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     public CapsuleSystem Capsules => _capsules;
 
     /// <summary>
+    /// The capsule throws, for the right-click row and the throw animation.
+    /// </summary>
+    public CapsuleThrows Throws => _throws;
+
+    /// <summary>
     /// The debug row's view of the capsules (written in the tick, read on the host's thread).
     /// </summary>
     public string CapsuleView => _capsuleView;
@@ -161,30 +204,31 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// </summary>
     volatile string _traderView = "Beastmaster: no world yet.";
 
+    public void Register(ChooserRegistry chooser) => chooser.Jobs(Trainers.Type, _trainers);
+
     public void Inputs(World world, IReadOnlyList<SimCommand> commands)
     {
         foreach (var command in commands)
         {
             if (command is BreedNowCommand) _breedNow = true;
             if (command is SettlementTraderCommand trader) _outposts.Add(trader);
+            if (command is ThrowCapsuleCommand thrown) _throws.Take(world, thrown);
         }
     }
 
     public void SlowWorld(World world)
     {
-        RestoreHitches(world);
         var settings = _settings.Copy();
-        var hitched = Hitches.All(world);
-        foreach (var h in hitched)
-            if ((h.Slot + world.Tick) % PenEveryTicks == 0) Pens.Keep(world, h, settings, _purpose);
-
         _tieUp.Apply(world);
+        _trainers.Step(world);
         _capsules.Run(world);
+        _throws.Run(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
         if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
 
         if (!_breedNow && world.Tick % BreedEveryTicks != 0) return;
 
+        var hitched = Hitches.All(world);
         if (settings.Breeding) _breeding.Run(world, hitched, settings, _population, _breedNow);
         _breedNow = false;
         _view = Describe(world, hitched);
@@ -209,11 +253,14 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     {
         double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
         _workedAt = world.GameHours;
-        TrainingPost.Run(world, settings, _purpose, hours);
-        Guarding.Run(world, settings, _purpose, hours);
+        var pens = _pens.Copy();
+        var lessons = TrainingPost.Run(world, _registry, pens, _purpose, hours, _hunting.MeatId);
+        Guarding.Run(world, pens, _purpose, hours);
         _fetching.Run(world);
-        _hunting.Run(world, settings, _purpose);
+        _hunting.Run(world, pens, _purpose);
         PassiveSkills.Run(world, hours);
+        Status.Publish(world, lessons, _hunting, _breeding, _sexes, settings);
+        Roster.Publish(world, _animals, _breeding, pens.PenRadius);
     }
 
     public void HitResolved(World world, in CombatHit hit) => _tieUp.Observe(world, hit);
@@ -245,32 +292,14 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     #region Saving
 
     /// <summary>
-    /// The sidecar layout's version.
+    /// The sidecar layout's version. Version 5 moved the hitches and the set sexes to Animal Behaviors' sidecar; an older save's are handed to it.
     /// </summary>
-    public const int SaveVersion = 4;
-
-    /// <summary>
-    /// Hitches read from a save, waiting for the first tick to find their characters by portrait serial.
-    /// </summary>
-    List<(uint Serial, string Post)>? _pending;
-
-    /// <summary>
-    /// The world the last tick ran on, for the save's hitches.
-    /// </summary>
-    World? _world;
+    public const int SaveVersion = 5;
 
     public void Write(Stream stream)
     {
         using var w = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
         w.Write(SaveVersion);
-        var hitches = SavedHitches();
-        w.Write(hitches.Count);
-        foreach (var (serial, post) in hitches)
-        {
-            w.Write(serial);
-            w.Write(post);
-        }
-
         w.Write(_breeding.NextTry.Count);
         foreach (var (serial, next) in _breeding.NextTry)
         {
@@ -278,23 +307,9 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
             w.Write(next);
         }
 
-        WriteSexes(w);
         _beastmaster.Write(w);
         _outposts.Write(w);
         _capsules.Write(w);
-    }
-
-    /// <summary>
-    /// Writes the sexes the mod set (version 2).
-    /// </summary>
-    void WriteSexes(BinaryWriter w)
-    {
-        w.Write(_sexes.Assigned.Count);
-        foreach (var (serial, female) in _sexes.Assigned)
-        {
-            w.Write(serial);
-            w.Write(female);
-        }
     }
 
     public void Read(Stream stream)
@@ -303,59 +318,37 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         int version = r.ReadInt32();
         if (version is < 1 or > SaveVersion) return;
 
-        _pending = [];
-        int hitches = r.ReadInt32();
-        for (int k = 0; k < hitches; k++) _pending.Add((r.ReadUInt32(), r.ReadString()));
-
+        if (version < 5) ReadHitches(r);
         _breeding.NextTry.Clear();
         int clocks = r.ReadInt32();
         for (int k = 0; k < clocks; k++) _breeding.NextTry[r.ReadUInt32()] = r.ReadDouble();
 
         if (version < 2) return;
 
-        _sexes.Assigned.Clear();
-        int sexes = r.ReadInt32();
-        for (int k = 0; k < sexes; k++) _sexes.Assigned[r.ReadUInt32()] = r.ReadBoolean();
-
+        if (version < 5) ReadSexes(r);
         _beastmaster.Read(r);
         if (version >= 3) _outposts.Read(r);
         if (version >= 4) _capsules.Read(r);
     }
 
     /// <summary>
-    /// Every hitch of the last world ticked, and those still waiting for their characters.
+    /// Hands an older save's hitches to Animal Behaviors, which puts them back at its next tick.
     /// </summary>
-    List<(uint Serial, string Post)> SavedHitches()
+    void ReadHitches(BinaryReader r)
     {
-        var list = new List<(uint, string)>(_pending ?? []);
-        if (_world is not { } world) return list;
-
-        var table = world.Characters;
-        for (int s = 0; s < table.HighWater; s++)
-        {
-            if (table.Next[s].Alive && table.Cold(s) is { PortraitSerial: { } serial } cold && Hitches.PostOf(cold) is { } post)
-                list.Add((serial, post));
-        }
-
-        return list;
+        var hitches = new List<(uint, string)>();
+        int count = r.ReadInt32();
+        for (int k = 0; k < count; k++) hitches.Add((r.ReadUInt32(), r.ReadString()));
+        _animals.ImportHitches(hitches);
     }
 
     /// <summary>
-    /// Puts the saved hitches back on their characters at the first tick after a load (the engine keeps no mod jobs in its save).
+    /// Hands an older save's set sexes to Animal Behaviors (version 2 to 4).
     /// </summary>
-    void RestoreHitches(World world)
+    void ReadSexes(BinaryReader r)
     {
-        _world = world;
-        if (_pending is not { } pending) return;
-
-        _pending = null;
-        var posts = pending.ToDictionary(p => p.Serial, p => p.Post);
-        var table = world.Characters;
-        for (int s = 0; s < table.HighWater; s++)
-        {
-            if (table.Next[s].Alive && table.Cold(s) is { IsPlayer: true, PortraitSerial: { } serial } cold && posts.TryGetValue(serial, out string? post))
-                Hitches.Hitch(cold, post);
-        }
+        int count = r.ReadInt32();
+        for (int k = 0; k < count; k++) _sexes.Assigned[r.ReadUInt32()] = r.ReadBoolean();
     }
 
     #endregion
@@ -364,18 +357,12 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
 
     public void Hash(ref StateHasher hasher)
     {
+        _throws.Hash(ref hasher);
         hasher.Add(_breeding.NextTry.Count);
         foreach (var (serial, next) in _breeding.NextTry)
         {
             hasher.Add(serial);
             hasher.Add(next);
-        }
-
-        hasher.Add(_sexes.Assigned.Count);
-        foreach (var (serial, female) in _sexes.Assigned)
-        {
-            hasher.Add(serial);
-            hasher.Add(female);
         }
 
         _beastmaster.Hash(ref hasher);
@@ -386,25 +373,6 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _capsules.Hash(ref hasher);
         hasher.Add(_workedAt);
         hasher.Add(_breedNow);
-        hasher.Add(_pending?.Count ?? -1);
-        HashHitches(ref hasher);
-    }
-
-    /// <summary>
-    /// The hitches on the characters (the engine hashes no mod jobs).
-    /// </summary>
-    void HashHitches(ref StateHasher hasher)
-    {
-        if (_world is not { } world) return;
-
-        var table = world.Characters;
-        for (int s = 0; s < table.HighWater; s++)
-        {
-            if (!table.Next[s].Alive || table.Cold(s) is not { } cold || Hitches.PostOf(cold) is not { } post) continue;
-
-            hasher.Add(s);
-            hasher.Add(Rng.StableHash(post));
-        }
     }
 
     #endregion
