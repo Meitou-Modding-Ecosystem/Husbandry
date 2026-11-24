@@ -1,4 +1,14 @@
 {
   "format": 1,
-  "frameworks": []
+  "frameworks": [
+    {
+      "id": "animal.behaviors",
+      "repo": "Meitou-Modding-Ecosystem/AnimalBehaviors",
+      "tag": "animal-behaviors-0.1.0-beta.pending",
+      "asset": "AnimalBehaviors-0.1.0-beta.pending.zip",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "folder": "AnimalBehaviors",
+      "engine": "2a31980923b9c4f7ae38e9ad4bda392842e67999"
+    }
+  ]
 }

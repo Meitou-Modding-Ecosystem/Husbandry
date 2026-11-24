@@ -1,38 +1,40 @@
 # Husbandry (content mod)
 
-Hitching posts and breeding for the player's animals, and an animal trader in Mourn (`husbandry`, no dependencies). Code: `Husbandry/`; its records are added at load (Data file).
-Other mods extend it with animal kinds and trainable skills: [depending-on-husbandry.md](depending-on-husbandry.md).
+Hitching posts, breeding, training and capsules for the player's animals, and an animal trader in Mourn (`husbandry`). Code: `Husbandry/`; its
+records are added at load (Data file). Built on **Animal Behaviors** (`animal.behaviors`, locked in `meitou.lock.json`), which owns the
+supported animals, animal sexes, the Hitched job, pens and grazing ([its docs](https://github.com/Meitou-Modding-Ecosystem/AnimalBehaviors/blob/beta/docs/animal-behaviors.md)).
+Other mods extend Husbandry with trainable skills: [depending-on-husbandry.md](depending-on-husbandry.md).
 Needs Meitou 0.22.2 or later (nightlies included), below 0.23 (`gameVersion`; code-mod API 3, for `World.GiveOrder`); built against the
 engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs (`AddJobType`,
-`AddJobOffer`; task types 4501, 4510 to 4515, 4520 to 4522), mod skills and status effects, `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
+`AddJobOffer`; task types 4510 to 4515, 4520 to 4523), mod skills and status effects, `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
 "World hooks").
 
 ## Setting up a ranch
 
 1. Research **Animal Husbandry** (Core, level 1, no blueprint). It unlocks the **Hitching Post** (build menu, Husbandry).
 2. Build a post and an **Animal Feeder** (vanilla, research Item Storage) inside the pen, and stock the feeder with food.
-3. Select animals, right-click the post and choose **Hitch here**. Each one lists the "Hitched" job on the post in its jobs list; the X unhitches it.
+3. Select animals, right-click the post and choose **Hitch here** (Animal Behaviors' job). Each one lists the "Hitched" job on the post in its
+   jobs list; the X unhitches it. A post holds at most 6 animals.
 4. Keep the squad's **Feed Animals** option on: hitched animals walk to the feeder themselves when hungry (vanilla goal 243, food from storage in
    a town of the player's; the post creates a player town).
 
-## Pen
+## Hitching Post
 
-A hitched animal standing idle more than **Pen radius** (setting, default 100 game units) from its post walks back to within half the radius;
-one inside strolls to another spot now and then (setting **Grazing**). Anything else it is doing comes first, so it leaves the pen only for:
-a food run to a feeder or food on the ground, a fight, a job of its jobs list (Follow or Bodyguard: remove it to keep the animal home), or a
-player's order (riding it with MeitouTransport is one). It comes back once it stands idle again. Checked once a game second per animal.
+The post is marked as an Animal Behaviors hitching post holding **6** animals (`Sites.MarkHitch` in the data phase): the framework offers its
+Hitched job there, keeps the animals in a pen round it (settings **Pen radius**, **Grazing**: Animal Behaviors' docs "Hitching") and turns a
+seventh away with "This post is full (6 animals)" over it.
 
-Distances: 1 game unit is about 10 cm (engine docs/formats/terrain.md). Large farms' crop grids measure 81 x 72 (Wheat L) to 91 x 91 (Vegetable
-L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has radius about 100.
+- **Animals button**: on a selected post of the player's, **Animals (n/6)** opens a window listing each animal hitched there: name, race, sex,
+  age (Pup, Teen, Adult), hunger (well fed from 200, hungry from 100, starving below; out of 300 as the character panel shows it), what it is
+  doing (getting food, resting or moving in the pen, out of the pen, down) and a paired female's hours to her next litter. Refreshed once a
+  game second (`PostRoster`, `HitchingPostWindow`).
+- **Look**: see "Own models" under Training.
 
 ## Breeding
 
 - **Adults**: age 0.6 or more, the game's "Adult" label (below 0.4 "Pup", below 0.6 "Teen"); elders too.
-- **Sex**: the game gives animals none (no ANIMAL_CHARACTER has `female chance`; Meitou draws every animal male, engine docs/game/animals.md
-  "Breeding and eggs"), so the mod decides it half and half from the character's portrait serial, which is saved with the character. A character
-  loaded from a save that has no serial gets a new one on load, so its sex is fixed from the first save made with Meitou. An animal the
-  Beastmaster sells keeps the sex it was sold as instead (kept by serial in the sidecar). The character panel shows it on every animal's Age line ("Adult (female)",
-  and a "Sex:" row in its tooltip): a Harmony postfix on the engine's `HudTips.Lines`, keeping the panel's number of lines.
+- **Sex**: Animal Behaviors' (half and half from the portrait serial; its docs "Sexes"). An animal the Beastmaster sells keeps the sex it was
+  sold as (written to the framework's set sexes).
 - **Same kind**: same RACE. Pack Beast and Garru share Garru; Domesticated Bull and Pack / Wild Bull are different races. Only races that
   support breeding (Supported animals) breed: by default not robots (Iron and Security Spiders, the Cleanser).
 - **Tries**: each hitched adult female with an adult male of her race at the same post tries every **Days between tries** (default 3) game
@@ -40,6 +42,8 @@ L), about 90 x 90. Four of them by area are 180 x 180; a circle of that area has
   male: hunger 2 or more (well fed) 50 %, 1 to 2 (hungry) 25 %, below 1 (starving) 10 % (settings).
 - **Birth**: at once, no pregnancy. The pup is the mother's record, aged 0.05, born 12 units from her in her squad (a player character),
   hitched to her post, and "<mother> has given birth to a pup at the hitching post." is posted. None while the faction is at its head cap.
+  When the post already holds 6 animals the pup stays unhitched, "This post is full (6 animals)" floats over it and "<mother>'s pup could
+  not be hitched: the post already holds 6 animals." is posted.
 - **Play-tested** (Observed, Matthew's "Settlement Test" save, 2026-11-23): a garru pair hitched to one post bred; the post then held three
   hitched animals.
 
@@ -109,7 +113,7 @@ small pieces across the atlas, and 2048 blurs it. Concept art: `concept-art/post
 
 - **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
-  with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Pen radius, Grazing) and learns only from a trainer.
+  with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Animal Behaviors' Pen radius and Grazing) and learns only from a trainer.
 - **Trainers** (job 4523 "Training animals", **Train animals here** on the Training Post, people; `Trainers`): while an animal of the player's
   holds a training job on the post, the trainer walks to 30 units in front of it and works there (a job of the chooser, `IJobSource`; it stands
   down when no animal trains there). Each working trainer trains one animal of the post (animals and trainers in slot order); an animal without
@@ -184,26 +188,10 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
 
 ## Supported animals
 
-Any of the player's animals can be hitched, those of other mods included: the job takes every animal (the engine's `SquadRegistry.IsAnimal`).
-What else an animal may do depends on its RACE:
-
-| Support | What it allows |
-| --- | --- |
-| Breeding | hitched adult pairs of the race breed at a Hitching Post |
-| Training | it learns skills at the Training Post |
-| Taming | a wild one, knocked out, can be caught in a Beast Capsule (summoned, it is the player's) |
-| Summoning | one of the player's own can go into a Beast Capsule and come out again |
-
-A race's support is the last registration naming its string id, else the last naming its name (without case), else:
-
-| Race | Support | Why |
-| --- | --- | --- |
-| Leviathan (built in) | breeding, training | too big for a capsule |
-| Any robot race (`is robot`) | training | it neither breeds nor fits a capsule |
-| Any other animal race | everything | |
-
-Other mods register kinds and skills ([depending-on-husbandry.md](depending-on-husbandry.md)). The full list for the loaded mods is debug row
-**Husbandry: supported animals**, and is logged once when the first world is built (`husbandry: supported animals: ...`).
+Animal Behaviors keeps the list (its docs "Supported animals"; debug row **Animal Behaviors: supported animals**). Husbandry reads its flags:
+Breeding (pairs breed at a Hitching Post), Training (it learns skills at the Training Post), Taming (a wild one, knocked out, can be caught in
+a Beast Capsule) and Summoning (one of the player's own can go into a Beast Capsule and come out again). Mods register animals with Animal
+Behaviors; trainable skills with Husbandry ([depending-on-husbandry.md](depending-on-husbandry.md)).
 
 ## Building panel
 
@@ -220,13 +208,12 @@ a game second; at most 6 bars a building, the engine's cap):
 
 ## Settings
 
-Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mourn (on by default).
+Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mourn (on by default).
 
 ## Debug rows (F10)
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
 - **Husbandry: capsules**: each animal kept in a Beast Capsule.
-- **Husbandry: supported animals**: every RACE of the loaded data with what it supports (Supported animals).
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
   settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first
@@ -237,13 +224,13 @@ Pen radius (30 to 600), Grazing, Breeding, Days between tries (1 to 30), the thr
 
 ## Save data
 
-The sidecar holds the hitches (portrait serial, post id), each paired female's next try (game hours), the sexes the mod set (portrait serial,
-female), the Beastmaster's six stock places (portrait serial, refill hour) and each settlement Beastmaster (settlement number, name, its six
-places) and the animals in Beast Capsules (next key; key, record, age, name, sex, stored stats, mod skill levels), version 4; a version 3
-sidecar loads with no capsule animals, a version 2 with no settlement Beastmasters either, a version 1 with none of the last four. The engine
-saves the hitch jobs too (as mod jobs of task type 4501); the sidecar's hitches go back on their characters at the first tick after a load, so
-saves from before 0.3.1 keep theirs. Both are in the world's state hash. A stock platoon is found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not
-found after a load adopts its platoon's animal again.
+The sidecar holds each paired female's next try (game hours), the Beastmaster's six stock places (portrait serial, refill hour) and each
+settlement Beastmaster (settlement number, name, its six places) and the animals in Beast Capsules (next key; key, record, age, name, sex,
+stored stats, mod skill levels), version 5. Versions 1 to 4 also held the hitches (portrait serial, post id) and the set sexes (from version
+2); loading one hands them to Animal Behaviors, which saves them from then on. A version 3 sidecar loads with no capsule animals, a version 2
+with no settlement Beastmasters either, a version 1 with none of the last four. All of it is in the world's state hash. A stock platoon is
+found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not found after
+a load adopts its platoon's animal again.
 
 ## Data file
 

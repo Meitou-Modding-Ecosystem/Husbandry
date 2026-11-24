@@ -1,4 +1,5 @@
 using System.Numerics;
+using AnimalBehaviors;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
 using Meitou.Simulation.Ai;

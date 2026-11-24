@@ -1,4 +1,5 @@
 using System.Globalization;
+using AnimalBehaviors;
 using Husbandry.Capsules;
 using Husbandry.Training;
 using Meitou.Data.Gameplay.Bodies;

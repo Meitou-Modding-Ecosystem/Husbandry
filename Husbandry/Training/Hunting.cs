@@ -1,4 +1,5 @@
 using System.Numerics;
+using AnimalBehaviors;
 using Meitou.Data.Fcs;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
@@ -89,7 +90,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     /// <summary>
     /// One check of every hunting animal.
     /// </summary>
-    public void Run(World world, HusbandrySettings settings, RngPurpose purpose)
+    public void Run(World world, AnimalSettings pens, RngPurpose purpose)
     {
         if (population is null) return;
 
@@ -101,7 +102,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
 
             uint serial = w.Cold.PortraitSerial ?? (uint)w.Slot;
             var hunt = _hunts.GetValueOrDefault(serial, (Leg.Resting, world.GameHours + RestHours(w)));
-            hunt = Step(world, w, hunt, settings, purpose);
+            hunt = Step(world, w, hunt, pens, purpose);
             _hunts[serial] = hunt;
             float done = Progress(world, w, hunt);
             progress[w.Site.Id] = Math.Max(progress.GetValueOrDefault(w.Site.Id), done);
@@ -161,7 +162,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     /// <summary>
     /// One animal's leg: rests until its time, runs out, turns back when it arrives or its time is up, and drops its meat at the pile.
     /// </summary>
-    (Leg, double) Step(World world, Worker w, (Leg Leg, double Until) hunt, HusbandrySettings settings, RngPurpose purpose)
+    (Leg, double) Step(World world, Worker w, (Leg Leg, double Until) hunt, AnimalSettings pens, RngPurpose purpose)
     {
         bool free = AnimalWork.Free(world, w.Slot, w.Cold);
         bool due = world.GameHours >= hunt.Until;
@@ -170,7 +171,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
             case Leg.Resting when due && free:
                 return Out(world, w, purpose) ?? (Leg.Resting, world.GameHours + 1);
             case Leg.Resting:
-                Pens.Keep(world, w.AsHitched, settings, purpose);
+                Pens.Keep(world, w.AsHitched, pens, purpose);
                 return hunt;
             case Leg.Out when free || due:
                 AnimalWork.Walk(world, w.Slot, w.Site.Position);

@@ -1,4 +1,5 @@
 using System.Text;
+using AnimalBehaviors;
 using Meitou.Modding;
 using Meitou.Simulation;
 using Meitou.Simulation.Population;

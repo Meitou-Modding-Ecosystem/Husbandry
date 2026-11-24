@@ -38,13 +38,13 @@ public sealed class LocalizationTests
         string[] required =
         [
             HusbandryData.ResearchText, HusbandryData.PostText, "Training Post", "Pet Station", "Bone Pile", "Capsule Bench",
-            "Hitch here", "Fetch for here", "Guard here", "Hunt from here", "Train: {1}", "Training {1}",
+            "Fetch for here", "Guard here", "Hunt from here", "Train: {1}", "Training {1}",
             "Fetch", "Guard", "Hunt", "Scout", "Pack", "Tie up", "Show me your beasts.", "Show me your packs.",
         ];
         Assert.All(required, source => Assert.True(catalog.ContainsKey(source), source));
-        Assert.NotEqual("Hitch here", HusbandryText.Lookup(locale, "Hitch here"));
+        Assert.NotEqual("Guard here", HusbandryText.Lookup(locale, "Guard here"));
         Assert.Contains("Milo", Loc.Format(HusbandryText.Lookup(locale, "Caught {1}!"), "Milo"));
-        Assert.Equal("Hitch here", HusbandryText.Lookup("en_GB", "Hitch here"));
+        Assert.Equal("Guard here", HusbandryText.Lookup("en_GB", "Guard here"));
     }
 
     static string[] Arguments(string text) =>

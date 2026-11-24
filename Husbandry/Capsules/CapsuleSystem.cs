@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using AnimalBehaviors;
 using Husbandry.Training;
 using Meitou.Simulation;
 using Meitou.Simulation.Factions;

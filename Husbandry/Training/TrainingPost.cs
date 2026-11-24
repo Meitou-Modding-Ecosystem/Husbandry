@@ -1,3 +1,4 @@
+using AnimalBehaviors;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Simulation;
 using Meitou.Simulation.Bodies;
@@ -33,7 +34,7 @@ public static class TrainingPost
     /// post (animals in slot order); an animal that may not learn the skill (docs/husbandry.md "Supported animals") is sent off the job. At each
     /// game hour mark a trainer feeds a treat, and an animal without a trainer says so. Returns the animals that trained or waited.
     /// </summary>
-    public static List<Lesson> Run(World world, AnimalRegistry registry, HusbandrySettings settings, RngPurpose purpose, double hours, string meat)
+    public static List<Lesson> Run(World world, AnimalRegistry registry, AnimalSettings pens, RngPurpose purpose, double hours, string meat)
     {
         var lessons = new List<Lesson>();
         bool hourMark = Math.Floor(world.GameHours) > Math.Floor(world.GameHours - hours);
@@ -43,7 +44,7 @@ public static class TrainingPost
             if (registry.SkillOf(w.Type) is not { } skill) continue;
             if (Refused(world, registry, w, skill)) continue;
 
-            Pens.Keep(world, w.AsHitched, settings, purpose);
+            Pens.Keep(world, w.AsHitched, pens, purpose);
             if (Hitches.Down(w.Cold) || w.Cold.InCombat) continue;
 
             int trainer = trainers.TryGetValue(w.Site.Id, out var free) && free.TryDequeue(out int t) ? t : -1;

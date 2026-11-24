@@ -1,4 +1,5 @@
 using System.Numerics;
+using AnimalBehaviors;
 using Meitou.Simulation;
 using Meitou.Simulation.Population;
 
@@ -7,9 +8,10 @@ namespace Husbandry;
 /// <summary>
 /// Breeding at the posts (docs/husbandry.md "Breeding"). Hitched adults of one race at one post pair up: each female with a male there tries for a
 /// pup every <see cref="HusbandrySettings.DaysBetweenTries"/> game days, the first try that long after she is paired. The chance follows the
-/// hungrier of her and the best-fed male. A pup is born beside her: her record, aged <see cref="NewbornAge"/>, in her squad, hitched to her post.
+/// hungrier of her and the best-fed male. A pup is born beside her: her record, aged <see cref="NewbornAge"/>, in her squad, hitched to her post
+/// when it has room (Animal Behaviors' hitch capacity), else left unhitched with a warning.
 /// </summary>
-public sealed class Breeding(RngPurpose purpose, Sexes sexes, AnimalRegistry registry, Action<string> log)
+public sealed class Breeding(RngPurpose purpose, IAnimalState animals, AnimalRegistry registry, Action<string> log)
 {
     /// <summary>
     /// A newborn's age (a "Pup" until 0.4).
@@ -44,10 +46,10 @@ public sealed class Breeding(RngPurpose purpose, Sexes sexes, AnimalRegistry reg
         var paired = new HashSet<uint>();
         foreach (var group in Groups(hitched))
         {
-            var males = group.Where(h => !sexes.Female(h.Cold)).ToList();
+            var males = group.Where(h => !animals.Sexes.Female(h.Cold)).ToList();
             if (males.Count == 0) continue;
 
-            foreach (var female in group.Where(h => sexes.Female(h.Cold)))
+            foreach (var female in group.Where(h => animals.Sexes.Female(h.Cold)))
             {
                 uint serial = female.Cold.PortraitSerial!.Value;
                 paired.Add(serial);
@@ -125,8 +127,12 @@ public sealed class Breeding(RngPurpose purpose, Sexes sexes, AnimalRegistry reg
             return;
         }
 
-        Hitches.Hitch(cold, mother.Post.Id);
         world.Post(HusbandryText.Format("{1} has given birth to a pup at the hitching post.", mother.Cold.Name));
+        if (animals.TryHitch(world, slot, mother.Post)) return;
+
+        int room = animals.Capacity(mother.Post);
+        world.Post(HusbandryText.Format("{1}'s pup could not be hitched: the post already holds {2} animals.", mother.Cold.Name, room));
+        Note($"{mother.Cold.Name}'s pup left unhitched: the post is full ({room})");
     }
 
     /// <summary>

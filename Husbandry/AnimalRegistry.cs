@@ -1,3 +1,4 @@
+using AnimalBehaviors;
 using Meitou.Data.Gameplay.Ai;
 using Meitou.Data.Gameplay.Bodies;
 using Meitou.Simulation;
@@ -7,102 +8,29 @@ using Meitou.Simulation.Factions;
 namespace Husbandry;
 
 /// <summary>
-/// The animal kinds and trainable skills Husbandry and its dependents registered (docs/husbandry.md "Supported animals", docs/depending-on-husbandry.md),
-/// and what each animal may do. Filled during the mods' <c>Initialize</c>, frozen when the first world is built, read by the systems after.
+/// The trainable skills Husbandry and its dependents registered (docs/husbandry.md "Training", docs/depending-on-husbandry.md), and what
+/// each animal may do (Animal Behaviors' list). Filled during the mods' <c>Initialize</c>, frozen when the first world is built, read by the
+/// systems after.
 /// </summary>
 public sealed class AnimalRegistry
 {
-    #region Kinds
+    #region Support
 
     /// <summary>
-    /// What a robot's race supports unless a registration says otherwise: training only (it neither breeds nor fits a capsule).
+    /// What animals of a race may do: Animal Behaviors' list of supported animals (docs/husbandry.md "Supported animals").
     /// </summary>
-    public const AnimalSupport RobotSupport = AnimalSupport.Training;
+    readonly Func<RaceData, AnimalSupport> _supportOf;
 
     /// <summary>
-    /// What any other animal's race supports unless a registration says otherwise.
+    /// A registry reading support from Animal Behaviors' list.
     /// </summary>
-    public const AnimalSupport DefaultSupport = AnimalSupport.All;
+    public AnimalRegistry(Func<RaceData, AnimalSupport> supportOf) => _supportOf = supportOf;
 
     /// <summary>
-    /// Husbandry's own list (docs/husbandry.md "Supported animals").
-    /// </summary>
-    public static readonly AnimalKind[] BuiltIn =
-    [
-        new("Leviathan", AnimalSupport.Breeding | AnimalSupport.Training, "too big for a capsule") { Owner = HusbandryMod.Id },
-    ];
-
-    /// <summary>
-    /// The registered kinds in registration order.
-    /// </summary>
-    readonly List<AnimalKind> _kinds = [.. BuiltIn];
-
-    /// <summary>
-    /// The registered kinds in registration order.
-    /// </summary>
-    public IReadOnlyList<AnimalKind> Kinds => _kinds;
-
-    /// <summary>
-    /// Registers an animal kind for a mod.
-    /// </summary>
-    public void AddKind(string owner, AnimalKind kind)
-    {
-        CheckOpen();
-        if (string.IsNullOrWhiteSpace(kind.Race)) throw new ArgumentException("An animal kind needs a race (a RACE string id or name).", nameof(kind));
-
-        _kinds.Add(kind with { Owner = owner, Race = kind.Race.Trim() });
-    }
-
-    /// <summary>
-    /// What animals of a race may do (<see cref="SupportOf(string, string, bool)"/>).
-    /// </summary>
-    public AnimalSupport SupportOf(RaceData race) => SupportOf(race.StringId, race.Name, race.IsRobot);
-
-    /// <summary>
-    /// What animals of a race may do: the last registration naming its string id, else the last naming its name, else
-    /// <see cref="RobotSupport"/> for a robot and <see cref="DefaultSupport"/> for the rest.
-    /// </summary>
-    public AnimalSupport SupportOf(string stringId, string name, bool robot)
-    {
-        if (Last(stringId) is { } byId) return byId.Support;
-        if (Last(name) is { } byName) return byName.Support;
-
-        return robot ? RobotSupport : DefaultSupport;
-    }
-
-    /// <summary>
-    /// Whether a character is an animal whose race supports everything in <paramref name="what"/>.
+    /// Whether the character is an animal whose race supports all of <paramref name="what"/>.
     /// </summary>
     public bool Supports(CharacterCold cold, AnimalSupport what) =>
-        SquadRegistry.IsAnimal(cold) && cold.Race is { } race && (SupportOf(race) & what) == what;
-
-    /// <summary>
-    /// The list of what each race may do, a line per race ("Garru: breeding, training, taming, summoning"), sorted by name.
-    /// </summary>
-    public List<string> Describe(IEnumerable<(string StringId, string Name, bool Robot)> races) =>
-        races
-            .DistinctBy(r => r.StringId)
-            .OrderBy(r => r.Name, StringComparer.Ordinal)
-            .Select(r => $"{r.Name}: {Words(SupportOf(r.StringId, r.Name, r.Robot))}")
-            .ToList();
-
-    /// <summary>
-    /// The words for a support ("breeding, training", "nothing").
-    /// </summary>
-    public static string Words(AnimalSupport support)
-    {
-        var words = Enum.GetValues<AnimalSupport>()
-            .Where(s => s is not (AnimalSupport.None or AnimalSupport.All) && (support & s) == s)
-            .Select(s => s.ToString().ToLowerInvariant())
-            .ToList();
-        return words.Count == 0 ? "nothing" : string.Join(", ", words);
-    }
-
-    /// <summary>
-    /// The last registration naming a race, or null.
-    /// </summary>
-    AnimalKind? Last(string race) =>
-        race.Length == 0 ? null : _kinds.LastOrDefault(k => string.Equals(k.Race, race, StringComparison.OrdinalIgnoreCase));
+        SquadRegistry.IsAnimal(cold) && cold.Race is { } race && (_supportOf(race) & what) == what;
 
     #endregion
 
@@ -157,7 +85,7 @@ public sealed class AnimalRegistry
     /// Whether an animal of a race may learn a skill: its race supports training and the skill's race list (if any) names it.
     /// </summary>
     public bool MayLearn(RaceData race, TrainableSkill skill) =>
-        (SupportOf(race) & AnimalSupport.Training) != 0 && (skill.Races is null || Named(skill.Races, race));
+        (_supportOf(race) & AnimalSupport.Training) != 0 && (skill.Races is null || Named(skill.Races, race));
 
     /// <summary>
     /// Whether a race list names a race by string id or name.
@@ -183,7 +111,6 @@ public sealed class AnimalRegistry
     /// </summary>
     public void Drop(string owner)
     {
-        _kinds.RemoveAll(k => k.Owner == owner);
         foreach (var skill in _skills.Where(s => s.Owner == owner)) _trainingTypes.Remove(skill.TrainingType);
         _skills.RemoveAll(s => s.Owner == owner);
     }
