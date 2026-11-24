@@ -231,8 +231,8 @@ public static class TraderData
         var line = HusbandryData.New(Id(number), FcsRecordType.DialogueLine, "DIALOGUE_LINE");
         Chances(line);
         line.Ints["speaker"] = speaker;
-        line.Strings["text0"] = text;
-        if (text1 is not null) line.Strings["text1"] = text1;
+        line.Strings["text0"] = HusbandryText.Get(text);
+        if (text1 is not null) line.Strings["text1"] = HusbandryText.Get(text1);
         if (next.Length > 0) line.References["lines"] = [.. next.Select(Ref)];
         if (effect is { } action) line.References["effects"] = [Ref(action)];
 

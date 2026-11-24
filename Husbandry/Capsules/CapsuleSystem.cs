@@ -122,7 +122,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         Fill(world, user, capsule, inventory, key);
         if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
 
-        AnimalWork.Say(world, user, $"Caught {cold.Name}!");
+        AnimalWork.Say(world, user, HusbandryText.Format("Caught {1}!", cold.Name));
         log($"husbandry: {table.Cold(user)!.Name} caught {cold.Name} ({cold.RecordId}) in a capsule");
         var id = table.IdOf(target);
         world.Uniques.Left(id);
@@ -227,7 +227,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         if (cold.PortraitSerial is { } serial) sexes.Assigned[serial] = beast.Female;
         _stored.Remove(key);
         capsule.ModTag = "";
-        AnimalWork.Say(world, slot, $"{beast.Name}, come out!");
+        AnimalWork.Say(world, slot, HusbandryText.Format("{1}, come out!", beast.Name));
     }
 
     #endregion

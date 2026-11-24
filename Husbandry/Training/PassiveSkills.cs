@@ -49,6 +49,6 @@ public static class PassiveSkills
 
         cold.Orders &= ~CharacterOrders.Sneak;
         if (cold.Medical is { } medical) medical.StayingLow = false;
-        AnimalWork.Say(world, slot, $"Can't sneak: needs Scout {AnimalSkills.Unlocked:0}");
+        AnimalWork.Say(world, slot, HusbandryText.Format("Can't sneak: needs Scout {1}", (int)AnimalSkills.Unlocked));
     }
 }

@@ -126,7 +126,7 @@ public sealed class Breeding(RngPurpose purpose, Sexes sexes, AnimalRegistry reg
         }
 
         Hitches.Hitch(cold, mother.Post.Id);
-        world.Post($"{mother.Cold.Name} has given birth to a pup at the hitching post.");
+        world.Post(HusbandryText.Format("{1} has given birth to a pup at the hitching post.", mother.Cold.Name));
     }
 
     /// <summary>

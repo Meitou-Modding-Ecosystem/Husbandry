@@ -74,7 +74,7 @@ public static class TrainingData
 
         record.Strings["building category"] = "FARMING";
         record.Strings["building group"] = "";
-        record.Strings["Description"] = text;
+        record.Strings["Description"] = HusbandryText.Get(text);
         record.Bools["creates player town"] = true;
         return record;
     }

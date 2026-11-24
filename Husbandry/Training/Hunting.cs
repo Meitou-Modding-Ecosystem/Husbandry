@@ -72,7 +72,7 @@ public sealed class Hunting(PopulationSystem? population, Action<string> log)
     /// <summary>
     /// The job as the pile offers it to animals.
     /// </summary>
-    public static ModJobOffer Offer => new(Type, [HusbandryData.BonePile], "Hunt from here", ModJobTakers.Animals);
+    public static ModJobOffer Offer => new(Type, [HusbandryData.BonePile], HusbandryText.Get("Hunt from here"), ModJobTakers.Animals);
 
     /// <summary>
     /// One check of every hunting animal.
