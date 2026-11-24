@@ -11,6 +11,11 @@ namespace Husbandry;
 public static class HusbandryData
 {
     /// <summary>
+    /// The build menu category that lists every Husbandry building (the menu shows a category's name as it is written, as the game's FARMING).
+    /// </summary>
+    public const string Category = "HUSBANDRY";
+
+    /// <summary>
     /// The data file's name; a record's id ends with it.
     /// </summary>
     public const string FileName = "Husbandry.mod";
@@ -126,7 +131,7 @@ public static class HusbandryData
     }
 
     /// <summary>
-    /// The post: the model's fields and links but its function (the cage), in the build menu's farming list, with its own text.
+    /// The post: the model's fields and links but its function (the cage), in the build menu's Husbandry category, with its own text.
     /// </summary>
     static FcsRecord PostRecord(GameRecord model)
     {
@@ -139,7 +144,7 @@ public static class HusbandryData
             record.References[list] = [.. model.GetReferences(list).Select(Link)];
         }
 
-        record.Strings["building category"] = "FARMING";
+        record.Strings["building category"] = Category;
         record.Strings["building group"] = "";
         record.Strings["Description"] = HusbandryText.Get(PostText);
         record.Bools["creates player town"] = true;

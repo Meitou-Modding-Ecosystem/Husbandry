@@ -117,7 +117,7 @@ public static class BenchData
 
         record.References["functionality"] = [new FcsReference(Work, 0, 0, 0)];
         record.References["upgrades to"] = [];
-        record.Strings["building category"] = "CRAFTING";
+        record.Strings["building category"] = HusbandryData.Category;
         record.Strings["building group"] = "";
         record.Strings["Description"] = HusbandryText.Get(Text);
         record.Bools["creates player town"] = true;
