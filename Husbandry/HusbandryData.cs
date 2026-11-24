@@ -53,6 +53,12 @@ public static class HusbandryData
     public const string ModelId = "18913-small_changes_otto.mod", ModelName = "Prisoner Pole";
 
     /// <summary>
+    /// The building the structure import makes from Structures/hitching-post.glb (block 4 in Structures/ids.json), whose look the post takes when
+    /// the loaded data has it.
+    /// </summary>
+    public const string PostLook = "900400-" + FileName;
+
+    /// <summary>
     /// The post's text in the build menu.
     /// </summary>
     public const string PostText = "A stout post to tether animals to. Select your animals, right-click the post and choose Hitch here: they stay"
@@ -82,7 +88,7 @@ public static class HusbandryData
         };
         var capsule = Capsules.CapsuleData.Build(game);
         Capsules.BenchData.AddRecipe(game, capsule);
-        file.Records.AddRange([ResearchRecord(), PostRecord(model), .. TraderData.Build(game), .. TrainingData.Build(game), capsule,
+        file.Records.AddRange([ResearchRecord(), PostRecord(game, model), .. TraderData.Build(game), .. TrainingData.Build(game), capsule,
             .. Capsules.ThrowData.Build(), .. Capsules.BenchData.Build(game)]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
@@ -131,10 +137,12 @@ public static class HusbandryData
     }
 
     /// <summary>
-    /// The post: the model's fields and links but its function (the cage), in the build menu's Husbandry category, with its own text.
+    /// The post: its own model's look (<see cref="PostLook"/>) when the data has it, else the stand-in's, with the stand-in's build cost and
+    /// without its function (the cage), in the build menu's Husbandry category, with its own text.
     /// </summary>
-    static FcsRecord PostRecord(GameRecord model)
+    static FcsRecord PostRecord(GameDatabase game, GameRecord standIn)
     {
+        var model = game.Find(PostLook) ?? standIn;
         var record = New(Post, FcsRecordType.Building, "Hitching Post");
         CopyFields(model, record);
         foreach (string list in model.ReferenceLists)
@@ -143,6 +151,8 @@ public static class HusbandryData
 
             record.References[list] = [.. model.GetReferences(list).Select(Link)];
         }
+
+        if (model != standIn) record.References["construction"] = [.. standIn.GetReferences("construction").Select(Link)];
 
         record.Strings["building category"] = Category;
         record.Strings["building group"] = "";
