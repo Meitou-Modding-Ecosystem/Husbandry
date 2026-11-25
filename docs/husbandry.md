@@ -196,7 +196,8 @@ Behaviors; trainable skills with Husbandry ([depending-on-husbandry.md](dependin
 ## Building panel
 
 A selected Husbandry building shows bars under its Condition (engine `AddBuildingRows`; `BuildingStatus`, rebuilt each training check, once
-a game second; at most 6 bars a building, the engine's cap):
+a game second; at most 6 bars a building, the engine's cap). The hook is only in the MeitouClientSandbox fork so far: the build defines
+`MEITOU_BUILDING_ROWS` when the engine it builds against has it (`tools\Switch-Engine.ps1`), and an upstream build has no bars:
 
 - **Training Post**: per training animal "<name>: <skill>", filled towards 10 ("7.3/10") then towards 100, tooltip its trainer or "Waiting
   for a trainer"; under it "Trainer <name>" with Animal Handling (out of 100).

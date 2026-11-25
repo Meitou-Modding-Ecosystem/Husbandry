@@ -4,11 +4,11 @@
     {
       "id": "animal.behaviors",
       "repo": "Meitou-Modding-Ecosystem/AnimalBehaviors",
-      "tag": "animal-behaviors-0.1.0-beta.aceaa0a",
-      "asset": "AnimalBehaviors-0.1.0-beta.aceaa0a.zip",
-      "sha256": "a749b2aab03037ffdad7a477330d14f06c70bffc1048c7ca0e162f865db8feb7",
+      "tag": "animal-behaviors-0.2.0-beta.d09e35a",
+      "asset": "AnimalBehaviors-0.2.0-beta.d09e35a.zip",
+      "sha256": "50ee1193abf3234e7f861ce1ed654746f42293bf6086b059efcf63fba51353b6",
       "folder": "AnimalBehaviors",
-      "engine": "48ea3cc42733ddd72da13c2b77cea80c7a7b15c6"
+      "engine": "50673ec77cc15b5b568f4cdbe7e62dbb4c65036c"
     }
   ]
 }
