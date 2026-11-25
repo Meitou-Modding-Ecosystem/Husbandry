@@ -16,13 +16,13 @@ jobs:
   release-gate:
     permissions:
       contents: read
-    uses: TheIvoryDisaster/GutenStructure/.github/workflows/release-gate.yml@5b080fca9aef988e032f4ea89b7fb9bdc72db3de
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/release-gate.yml@b8fc4ac1481cd27e036fdd5ed8074ea826dae701
 
   release:
     needs: release-gate
     permissions:
       contents: write
-    uses: TheIvoryDisaster/GutenStructure/.github/workflows/package-meitou-mod.yml@18f67b9121d10d27530bb45916e338f4e159eaa1
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/package-meitou-mod.yml@b8fc4ac1481cd27e036fdd5ed8074ea826dae701
     with:
       mod-folder: Husbandry
       slug: husbandry

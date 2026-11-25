@@ -85,10 +85,12 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// </summary>
     readonly Hunting _hunting;
 
+#if MEITOU_BUILDING_ROWS
     /// <summary>
     /// The bars under the buildings' Condition.
     /// </summary>
     public BuildingStatus Status { get; } = new();
+#endif
 
     /// <summary>
     /// The animals at each Hitching Post, for its window.
@@ -259,7 +261,9 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _fetching.Run(world);
         _hunting.Run(world, pens, _purpose);
         PassiveSkills.Run(world, hours);
+#if MEITOU_BUILDING_ROWS
         Status.Publish(world, lessons, _hunting, _breeding, _sexes, settings);
+#endif
         Roster.Publish(world, _animals, _breeding, pens.PenRadius);
     }
 

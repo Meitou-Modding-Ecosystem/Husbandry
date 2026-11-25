@@ -18,6 +18,9 @@ jobs:
       issues: write
       pull-requests: write
       actions: write
-    uses: TheIvoryDisaster/GutenStructure/.github/workflows/meitou-compat.yml@196e194f2b8a3934fa81d99a1ab0b20211eba807
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/meitou-compat.yml@b8fc4ac1481cd27e036fdd5ed8074ea826dae701
     with:
-      tools-ref: 196e194f2b8a3934fa81d99a1ab0b20211eba807
+      tools-ref: b8fc4ac1481cd27e036fdd5ed8074ea826dae701
+    secrets:
+      app-id: ${{ secrets.MEITOU_BOT_APP_ID }}
+      app-key: ${{ secrets.MEITOU_BOT_KEY }}

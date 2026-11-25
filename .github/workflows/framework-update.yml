@@ -1,0 +1,27 @@
+# Moves meitou.lock.json to new framework beta releases: builds and tests, opens a PR into beta and merges it when CI is green
+# (GutenStructure docs/framework-update.md). A failing PR stays open as the regression report. Nothing to do while the lock is empty.
+# The beta channel tests every framework beta snapshot here within 6 hours (GutenStructure docs/versioning.md). A repository with only
+# `main` adds `base: main`.
+name: Framework update
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/framework-update.yml@b8fc4ac1481cd27e036fdd5ed8074ea826dae701
+    with:
+      tools-ref: b8fc4ac1481cd27e036fdd5ed8074ea826dae701
+      channel: beta
+    secrets:
+      app-id: ${{ secrets.MEITOU_BOT_APP_ID }}
+      app-key: ${{ secrets.MEITOU_BOT_KEY }}

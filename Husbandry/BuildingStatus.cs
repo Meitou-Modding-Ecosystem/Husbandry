@@ -1,3 +1,6 @@
+#if MEITOU_BUILDING_ROWS
+// The building panel bars need the engine's AddBuildingRows hook (MeitouClientSandbox fork, not yet upstream): Husbandry.csproj defines
+// MEITOU_BUILDING_ROWS only when the engine it builds against has it, so an upstream build leaves the bars out.
 using System.Globalization;
 using AnimalBehaviors;
 using Husbandry.Capsules;
@@ -199,3 +202,4 @@ public sealed class StatusUi(Func<BuildingStatus?> status) : IUiExtension
 
     public void Register(UiRegistration registration) => registration.AddBuildingRows(context => status()?.For(context.Building.SiteId) ?? []);
 }
+#endif
