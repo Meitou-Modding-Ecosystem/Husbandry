@@ -2,7 +2,7 @@
   "id": "husbandry",
   "version": "0.8.5",
   "apiVersion": 3,
-  "gameVersion": ">=0.23.1",
+  "gameVersion": ">=0.23.2",
   "dependencies": [
     {
       "id": "animal.behaviors",
