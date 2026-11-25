@@ -93,7 +93,9 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
         _throwMove = c.Data.Find(ThrowData.Technique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
+#if MEITOU_BUILDING_ROWS
         c.AddUi(new StatusUi(() => _latest?.Status));
+#endif
         c.AddUi(new HitchingPostWindow(() => _latest?.Roster));
         c.AddUi(new CapsuleUi(() => _latest?.Throws, at => c.PlayEffect(MistEffect, at, MistSeconds, MistTint)));
         c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
