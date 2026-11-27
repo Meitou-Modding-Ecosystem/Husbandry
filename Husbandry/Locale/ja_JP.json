@@ -81,6 +81,8 @@
   "Animal Handling": "動物の扱い",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "訓練柱でこの人物が動物を訓練する速さ。扱い50の訓練士からは扱い1の訓練士の4倍の速さで学ぶ。",
   "Waiting for a trainer": "訓練士を待っている",
+  "This Training Post already has an animal": "この訓練柱にはもう動物がいる",
+  "Another trainer works this post": "別の訓練士がこの柱で働いている",
   "No Raw Meat for treats: training at half speed": "ご褒美の生肉がない: 訓練速度半分",
   "Trained by {1}": "訓練士: {1}",
   "{1}: {2}": "{1}: {2}",

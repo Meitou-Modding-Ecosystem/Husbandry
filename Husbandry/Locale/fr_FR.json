@@ -81,6 +81,8 @@
   "Animal Handling": "Dressage",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "La vitesse à laquelle cette personne dresse les animaux au poteau de dressage : un animal apprend quatre fois plus vite avec un dresseur à 50 qu'avec un dresseur à 1.",
   "Waiting for a trainer": "Attend un dresseur",
+  "This Training Post already has an animal": "Ce poteau de dressage a déjà un animal",
+  "Another trainer works this post": "Un autre dresseur travaille à ce poteau",
   "No Raw Meat for treats: training at half speed": "Pas de viande crue en friandise : dressage à mi-vitesse",
   "Trained by {1}": "Dressé par {1}",
   "{1}: {2}": "{1} : {2}",

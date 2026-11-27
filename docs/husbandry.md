@@ -113,11 +113,18 @@ small pieces across the atlas, and 2048 blurs it. Concept art: `concept-art/post
 
 - **Training Post**: right-click it with animals selected and choose **Train: <skill>** (job types 4510 to 4515, "Training <skill>"; skills
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
-  with a floating "A <race> can't learn <skill>" (Supported animals). The animal keeps to a pen round the post as a hitched one does (Animal Behaviors' Pen radius and Grazing) and learns only from a trainer.
+  with a floating "A <race> can't learn <skill>" (Supported animals). A post takes **one animal**: the first sent keeps it while it trains
+  there; another sent to it comes off the job with a floating "This Training Post already has an animal" (`TrainingPost.Choose`; not saved,
+  so after a load the first in slot order keeps it). The animal keeps to a pen round the post as a hitched one does (Animal Behaviors' Pen
+  radius and Grazing) and learns only from a trainer.
 - **Trainers** (job 4523 "Training animals", **Train animals here** on the Training Post, people; `Trainers`): while an animal of the player's
   holds a training job on the post, the trainer walks to 30 units in front of it and works there (a job of the chooser, `IJobSource`; it stands
-  down when no animal trains there). Each working trainer trains one animal of the post (animals and trainers in slot order); an animal without
-  one floats "Waiting for a trainer" each game hour. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
+  down when no animal trains there). A post takes **one trainer**: while one walks to it or works it on the job, the chooser refuses the job
+  to anyone else ("Another trainer works this post"). An animal without a trainer floats "Waiting for a trainer" each game hour.
+  **Drill** (`TrainingDrills`): from the check at which a trainer and its animal pair up, every 10 s the trainer turns to face the animal
+  (`CharacterHot.Yaw`, each serial step while it plays) and plays Kenshi Races' `kr_cartographer` clip (2.97 s) once as a mod combat move,
+  looping while both stay on the post. Kenshi Races is an optional dependency (`meitou.json`, locked in `meitou.lock.json`); without it
+  the trainer only turns. Not saved: after a load the drill starts again. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
   `husbandry.handling`, people start at 1) rising in a line to 0.8 at 50 or more: about two game days, or half a day, from 0 to 10. The
   trainer gains 0.5 Animal Handling a game hour. **Treats** (`Treats`): at each game hour mark the trainer feeds one Raw Meat, from its own
   inventory (and backpack) first, else from the nearest finished storage of the player's within 300 units of the post; with none at hand the
