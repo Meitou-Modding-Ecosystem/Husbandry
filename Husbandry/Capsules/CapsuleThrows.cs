@@ -6,6 +6,7 @@ using Husbandry.Training;
 using Meitou.Data.Gameplay.Combat;
 using Meitou.Simulation;
 using Meitou.Simulation.Bodies;
+using Meitou.Simulation.Combat;
 using Meitou.Simulation.Items;
 
 namespace Husbandry.Capsules;
@@ -17,9 +18,11 @@ public sealed record ThrowCapsuleCommand(IReadOnlyList<CharacterId> Throwers, Ch
 
 /// <summary>
 /// Throwing a Beast Capsule (docs/husbandry.md "Beast Capsules"): the player right-clicks a knocked-out beast and chooses Throw Beast Capsule; the
-/// first selected character holding an empty capsule walks to within <see cref="Range"/> of it, plays the throw and catches it as a right click on
-/// the capsule beside it would, unless the beast breaks free (<see cref="BreakFreeChance"/>): it comes to, healed just enough to stand, and the
-/// capsule stays empty. Throws in progress are not saved. Serial steps, except <see cref="Move"/> and the published views.
+/// first selected character holding an empty capsule walks to within <see cref="Range"/> of it, stops, turns to face it and plays the throw,
+/// held facing it until the clip ends and the capsule has landed. Another order or a hit on the thrower before then interrupts the throw, which
+/// then fails (the capsule is kept). The capsule flies from the hand (<see cref="Flights"/>, drawn by the interface) and catches the beast as a
+/// right click on the capsule beside it would, unless the beast breaks free (<see cref="BreakFreeChance"/>): it comes to, healed just enough to
+/// stand, and the capsule is kept. Throws in progress are not saved. Serial steps, except <see cref="Move"/> and the published views.
 /// </summary>
 public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, CombatTechnique? throwMove, RngPurpose purpose)
 {
@@ -54,9 +57,24 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     const float ThrowSeconds = 1.7f;
 
     /// <summary>
-    /// When the capsule lands, in seconds into the throw: the clip lets go at 0.9 s, then a short flight.
+    /// When the hand lets go, in seconds into the throw (the clip's release).
     /// </summary>
-    const float LandSeconds = 1.1f;
+    public const float ReleaseSeconds = 0.9f;
+
+    /// <summary>
+    /// How fast the capsule flies, in game units a second.
+    /// </summary>
+    public const float FlightSpeed = 300;
+
+    /// <summary>
+    /// The hand's place at the release in the thrower's frame (X to its right, Y up, Z ahead), in game units: where the flight starts.
+    /// </summary>
+    public static readonly Vector3 Hand = new(3, 17, 4);
+
+    /// <summary>
+    /// How far a new goal may lie from where the thrower stopped before it counts as another order, in game units.
+    /// </summary>
+    const float NewGoal = 5;
 
     /// <summary>
     /// How often a walking thrower is sent on again (a move order ends when something interrupts it), in ticks.
@@ -87,7 +105,32 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         /// Whether the capsule has landed; the thrower then finishes the clip.
         /// </summary>
         public bool Landed { get; set; }
+
+        /// <summary>
+        /// When the capsule lands, in seconds into the throw (<see cref="LandAt"/>).
+        /// </summary>
+        public float LandSeconds { get; set; }
+
+        /// <summary>
+        /// Where the thrower stopped to throw (X/Z): a goal elsewhere is another order.
+        /// </summary>
+        public Vector2 StoppedAt { get; set; }
+
+        /// <summary>
+        /// The order in hand when the throw started: another one is another order.
+        /// </summary>
+        public object? Front { get; set; }
+
+        /// <summary>
+        /// Whether a hit landed on the thrower during the throw.
+        /// </summary>
+        public bool Hit { get; set; }
     }
+
+    /// <summary>
+    /// A capsule in flight, for the interface to draw: from the hand to the beast, between two ticks.
+    /// </summary>
+    public sealed record Flight(Vector3 From, Vector3 To, long Released, long Lands);
 
     /// <summary>
     /// The most landings <see cref="Landed"/> holds undrawn (no interface drains it in a headless world).
@@ -103,6 +146,16 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     /// Where capsules landed, for the mist the interface draws there (display only: never read by the world, not hashed).
     /// </summary>
     public ConcurrentQueue<Vector3> Landed { get; } = new();
+
+    /// <summary>
+    /// The capsules thrown and not yet landed, published after each serial step for the interface (display only).
+    /// </summary>
+    public IReadOnlyList<Flight> Flights => _flights;
+
+    /// <summary>
+    /// The latest <see cref="Flights"/>.
+    /// </summary>
+    volatile Flight[] _flights = [];
 
     /// <summary>
     /// The throwers in their throw and the tick it started, published after each serial step for <see cref="Move"/>.
@@ -165,6 +218,37 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     }
 
     /// <summary>
+    /// A resolved hit: a thrower hit during its throw has it interrupted.
+    /// </summary>
+    public void Observe(in CombatHit hit)
+    {
+        var victim = hit.Victim;
+        foreach (var t in _throws)
+            if (t.Thrower == victim && t.StartedAt >= 0 && !t.Landed) t.Hit = true;
+    }
+
+    /// <summary>
+    /// When a capsule thrown at a beast <paramref name="distance"/> away lands, in seconds into the throw.
+    /// </summary>
+    public static float LandAt(float distance) => ReleaseSeconds + Math.Max(distance, 0) / FlightSpeed;
+
+    /// <summary>
+    /// The heading that faces from <paramref name="from"/> to <paramref name="to"/> (the engine's yaw: 0 along +Z, towards +X).
+    /// </summary>
+    public static float YawTowards(Vector3 from, Vector3 to) => MathF.Atan2(to.X - from.X, to.Z - from.Z);
+
+    /// <summary>
+    /// Where a capsule is <paramref name="progress"/> (0 to 1) along its flight: on the line from the hand to the beast, lifted by an arc that
+    /// peaks a fifth of the distance up halfway.
+    /// </summary>
+    public static Vector3 AlongFlight(Flight flight, float progress)
+    {
+        float p = Math.Clamp(progress, 0, 1);
+        float lift = Vector3.Distance(flight.From, flight.To) * 0.2f * 4 * p * (1 - p);
+        return Vector3.Lerp(flight.From, flight.To, p) + new Vector3(0, lift, 0);
+    }
+
+    /// <summary>
     /// The throws in progress, for the state hash.
     /// </summary>
     public void Hash(ref StateHasher hasher)
@@ -178,6 +262,8 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
             hasher.Add(t.Target.Generation);
             hasher.Add(t.StartedAt);
             hasher.Add(t.Landed);
+            hasher.Add(t.LandSeconds);
+            hasher.Add(t.Hit);
         }
     }
 
@@ -188,18 +274,53 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
     {
         var table = world.Characters;
         if (!table.TryResolveNext(t.Thrower, out int thrower) || table.Cold(thrower) is not { } cold || Hitches.Down(cold)) return false;
-        if (t.Landed) return Seconds(world, t) < ThrowSeconds;
+        if (t.Landed) return HoldFacing(world, t, thrower);
         if (world.Tick - t.ChosenAt > GiveUpTicks) return Said(world, thrower, "Gave up the throw");
         if (!table.TryResolveNext(t.Target, out int beast) || !capsules.Catchable(table.Cold(beast)!)) return Said(world, thrower, "The beast got away");
         if (EmptyCapsule(world, thrower) is not { } capsule) return Said(world, thrower, "No empty Beast Capsule");
 
         if (t.StartedAt < 0) return Approach(world, t, thrower, beast);
-        if (Seconds(world, t) < LandSeconds) return true;
+        if (Interrupted(world, t, thrower, cold)) return Said(world, thrower, "Throw interrupted");
+
+        Face(world, thrower, beast);
+        if (Seconds(world, t) < t.LandSeconds) return true;
 
         if (Landed.Count < MaxLanded) Landed.Enqueue(world.Characters.Next[beast].Position);
         if (BreaksFree(world, t)) Rouse(world, thrower, beast);
         else capsules.CatchThrown(world, thrower, capsule, cold.Inventory!, beast);
         t.Landed = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Whether the throw was interrupted before the capsule landed: the thrower was hit, given another order (a new order in hand) or sent
+    /// elsewhere (a goal away from where it stopped).
+    /// </summary>
+    static bool Interrupted(World world, Throw t, int thrower, CharacterCold cold)
+    {
+        if (t.Hit) return true;
+        if (cold.OrderQueue.Front is { } front && !ReferenceEquals(front, t.Front)) return true;
+
+        return Vector2.Distance(world.Characters.Next[thrower].Goal, t.StoppedAt) > NewGoal;
+    }
+
+    /// <summary>
+    /// Turns the thrower to face the beast.
+    /// </summary>
+    static void Face(World world, int thrower, int beast)
+    {
+        var table = world.Characters;
+        table.Next[thrower].Yaw = YawTowards(table.Next[thrower].Position, table.Next[beast].Position);
+    }
+
+    /// <summary>
+    /// After the landing: keeps the thrower facing the beast's spot until the clip ends; false then.
+    /// </summary>
+    static bool HoldFacing(World world, Throw t, int thrower)
+    {
+        if (Seconds(world, t) >= ThrowSeconds) return false;
+
+        if (world.Characters.TryResolveNext(t.Target, out int beast)) Face(world, thrower, beast);
         return true;
     }
 
@@ -253,12 +374,28 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         var target = world.Characters.Next[beast].Position;
         if (AnimalWork.Away(world, thrower, target) <= Range)
         {
-            t.StartedAt = world.Tick;
+            Start(world, t, thrower, target);
             return true;
         }
 
         if ((world.Tick - t.ChosenAt) % WalkEveryTicks == 0) AnimalWork.Walk(world, thrower, StopShort(world, thrower, target));
         return true;
+    }
+
+    /// <summary>
+    /// Starts the throw: the thrower stops where it stands, turns to the beast, and the capsule's landing is timed by the distance.
+    /// </summary>
+    static void Start(World world, Throw t, int thrower, Vector3 target)
+    {
+        var table = world.Characters;
+        var at = table.Next[thrower].Position;
+        AnimalWork.Walk(world, thrower, at);
+        table.Next[thrower].Yaw = YawTowards(at, target);
+
+        t.StartedAt = world.Tick;
+        t.LandSeconds = LandAt(Vector3.Distance(at, target));
+        t.StoppedAt = new Vector2(at.X, at.Z);
+        t.Front = table.Cold(thrower)!.OrderQueue.Front;
     }
 
     /// <summary>
@@ -287,12 +424,30 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         world.Characters.Cold(slot)?.Inventory?.All().FirstOrDefault(i => i.Record == capsuleRecord && !CapsuleSystem.Full(i));
 
     /// <summary>
+    /// The flight of a started throw whose capsule has not landed: from the thrower's hand at the release to the beast's middle.
+    /// </summary>
+    static Flight? FlightOf(World world, Throw t)
+    {
+        var table = world.Characters;
+        if (t.StartedAt < 0 || t.Landed || !table.TryResolveNext(t.Thrower, out int thrower) || !table.TryResolveNext(t.Target, out int beast))
+            return null;
+
+        var hot = table.Next[thrower];
+        var hand = hot.Position + Vector3.Transform(Hand, Quaternion.CreateFromAxisAngle(Vector3.UnitY, hot.Yaw));
+        var to = table.Next[beast].Position + new Vector3(0, 5, 0);
+        long released = t.StartedAt + (long)MathF.Round(ReleaseSeconds / world.TickSeconds);
+        long lands = t.StartedAt + (long)MathF.Round(t.LandSeconds / world.TickSeconds);
+        return new Flight(hand, to, released, lands);
+    }
+
+    /// <summary>
     /// Publishes the throwers in their throw, and every <see cref="ViewEveryTicks"/> the catchable beasts and the player's characters holding an
     /// empty capsule.
     /// </summary>
     void Publish(World world)
     {
         _throwing = _throws.Where(t => t.StartedAt >= 0).ToFrozenDictionary(t => t.Thrower, t => t.StartedAt);
+        _flights = [.. _throws.Select(t => FlightOf(world, t)).OfType<Flight>()];
         if (world.Tick % ViewEveryTicks != 0) return;
 
         var table = world.Characters;

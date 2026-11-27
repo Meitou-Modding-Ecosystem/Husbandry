@@ -1,33 +1,89 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
 using AnimalBehaviors;
 using Husbandry.Training;
 using Meitou.Simulation;
-using Meitou.Simulation.Factions;
 using Meitou.Simulation.Items;
 using Meitou.Simulation.Population;
 
 namespace Husbandry.Capsules;
 
 /// <summary>
-/// Beast Capsules (docs/husbandry.md "Beast Capsules"): right-click an empty capsule in a character's inventory while standing next to a knocked-out
-/// animal, or one of the player's own, and the animal goes into the capsule; right-click a full one and it comes out beside the character as one
-/// of the player's, with the same name, sex, stats and skills (fully healed; what it carried is dropped when it goes in). A full capsule's
-/// <see cref="ItemInstance.ModTag"/> holds its key; the animals are saved in the mod's sidecar. The clicks only queue; the serial step does the
-/// work. Serial steps only.
+/// What a click on a filled capsule does (<see cref="CapsuleSystem.Decide"/>).
+/// </summary>
+public enum CapsuleAction
+{
+    /// <summary>
+    /// The capsule's beast is gone for good: it becomes an empty capsule.
+    /// </summary>
+    Empty,
+    /// <summary>
+    /// The capsule was used too recently (a summon or recall is still settling, or the game is paused): nothing happens.
+    /// </summary>
+    Wait,
+    /// <summary>
+    /// The beast is inside: it comes out.
+    /// </summary>
+    Summon,
+    /// <summary>
+    /// The beast is out: it goes back in.
+    /// </summary>
+    Recall,
+}
+
+/// <summary>
+/// A beast bound to a filled capsule: the beast as last stored, the lasting id of its body while it is out (none while inside) and the tick the
+/// capsule was last used.
+/// </summary>
+public sealed class BoundBeast(StoredBeast beast)
+{
+    /// <summary>
+    /// The beast as it was when it last went in.
+    /// </summary>
+    public StoredBeast Beast { get; set; } = beast;
+
+    /// <summary>
+    /// Its body's lasting id while it is out; none while it is inside.
+    /// </summary>
+    public LastingId Out { get; set; }
+
+    /// <summary>
+    /// The tick the capsule last summoned or recalled it; long.MinValue never.
+    /// </summary>
+    public long UsedAt { get; set; } = long.MinValue;
+}
+
+/// <summary>
+/// What a capsule's tooltip shows of its beast (<see cref="CapsuleTooltip"/>), published for the host's thread.
+/// </summary>
+public sealed record BeastView(StoredBeast Beast, bool Out);
+
+/// <summary>
+/// Beast Capsules (docs/husbandry.md "Beast Capsules"). An empty capsule catches a beast (thrown, <see cref="CapsuleThrows"/>, or right-clicked
+/// next to it): the beast leaves the world and a filled capsule bound to it drops where it lay. Right-clicking the filled capsule calls the beast
+/// out as one of the player's, with the same name, sex, stats, skills and traits; right-clicking it again calls that same beast back in. A capsule
+/// acts at most once per <see cref="SettleTicks"/>, so a second click before the first has settled (or any while paused) does nothing. A filled
+/// capsule's <see cref="ItemInstance.ModTag"/> holds its key; the beasts are saved in the mod's sidecar. Item uses run in the player system's
+/// serial step; the rest in serial steps.
 /// </summary>
 public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, AnimalRegistry registry, Action<string> log)
 {
     /// <summary>
-    /// The start of a full capsule's tag; its key follows.
+    /// The start of a filled capsule's tag; its key follows.
     /// </summary>
     public const string TagPrefix = "husbandry.capsule:";
 
     /// <summary>
-    /// How near the character an animal must be to be caught, in game units.
+    /// How near the character an animal must be to be caught by a right click, in game units.
     /// </summary>
     public const float CatchReach = 40;
+
+    /// <summary>
+    /// How near the character a beast that is out must be to be called back, in game units (30 m).
+    /// </summary>
+    public const float RecallReach = 300;
 
     /// <summary>
     /// How far from the character a summoned animal comes out.
@@ -35,14 +91,19 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     const float SummonDistance = 15;
 
     /// <summary>
-    /// The kept animals by key.
+    /// How long after a summon or recall the capsule does nothing, in ticks (one second): the beast is still appearing or leaving.
     /// </summary>
-    readonly SortedDictionary<int, StoredBeast> _stored = [];
+    public const int SettleTicks = 30;
 
     /// <summary>
-    /// The clicks waiting for the serial step: the user, the capsule and the inventory holding it.
+    /// The beasts by key.
     /// </summary>
-    readonly List<(CharacterId User, ItemInstance Capsule, Inventory Inventory)> _clicks = [];
+    readonly SortedDictionary<int, BoundBeast> _bound = [];
+
+    /// <summary>
+    /// The beasts by key as of the last change, for the tooltips (host's thread).
+    /// </summary>
+    volatile FrozenDictionary<int, BeastView> _views = FrozenDictionary<int, BeastView>.Empty;
 
     /// <summary>
     /// The next key.
@@ -50,48 +111,82 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     int _nextKey = 1;
 
     /// <summary>
-    /// A right click on a capsule: queued for the serial step; always used.
+    /// Whether a capsule holds a beast: a filled capsule, or an old save's capsule carrying a key.
+    /// </summary>
+    public static bool Full(ItemInstance capsule) => capsule.Record == HusbandryData.FilledCapsule || Key(capsule.ModTag) is not null;
+
+    /// <summary>
+    /// The key a tag holds, or null.
+    /// </summary>
+    public static int? Key(string tag) =>
+        tag.StartsWith(TagPrefix, StringComparison.Ordinal)
+        && int.TryParse(tag.AsSpan(TagPrefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out int key)
+            ? key
+            : null;
+
+    /// <summary>
+    /// The tooltip's view of a capsule's beast by its tag, or null (host's thread).
+    /// </summary>
+    public BeastView? View(string tag) => Key(tag) is { } key ? _views.GetValueOrDefault(key) : null;
+
+    /// <summary>
+    /// What a click on a filled capsule does now: nothing within <see cref="SettleTicks"/> of its last use, else a summon while the beast is inside,
+    /// a recall while it is out, and an empty capsule when no beast is bound to it.
+    /// </summary>
+    public static CapsuleAction Decide(BoundBeast? bound, long tick)
+    {
+        if (bound is null) return CapsuleAction.Empty;
+        if (bound.UsedAt != long.MinValue && tick - bound.UsedAt < SettleTicks) return CapsuleAction.Wait;
+
+        return bound.Out.IsNone ? CapsuleAction.Summon : CapsuleAction.Recall;
+    }
+
+    /// <summary>
+    /// A right click on a capsule in a character's own inventory: a filled one summons or recalls its beast, an empty one catches the nearest
+    /// catchable beast beside the character. Always used.
     /// </summary>
     public bool Use(ItemUse use)
     {
-        _clicks.Add((use.User, use.Item, use.Inventory));
+        var world = use.World;
+        if (!world.Characters.TryResolveNext(use.User, out int slot)) return true;
+
+        if (Full(use.Item)) Click(world, slot, use.Item, use.Inventory);
+        else Catch(world, slot, use.Item, use.Inventory);
+
+        Publish();
         return true;
     }
 
     /// <summary>
-    /// The serial step: catches or summons for each click queued.
+    /// A click on a filled capsule (<see cref="Decide"/>).
     /// </summary>
-    public void Run(World world)
+    void Click(World world, int user, ItemInstance capsule, Inventory inventory)
     {
-        foreach (var (user, capsule, inventory) in _clicks)
+        int? key = Key(capsule.ModTag);
+        var bound = key is { } k ? _bound.GetValueOrDefault(k) : null;
+        switch (Decide(bound, world.Tick))
         {
-            if (!world.Characters.TryResolveNext(user, out int slot) || !inventory.All().Contains(capsule)) continue;
-
-            if (Key(capsule) is { } key) Summon(world, slot, capsule, key);
-            else Catch(world, slot, capsule, inventory);
+            case CapsuleAction.Empty:
+                Emptied(world, user, capsule, inventory);
+                break;
+            case CapsuleAction.Wait:
+                AnimalWork.Say(world, user, "Wait a moment");
+                break;
+            case CapsuleAction.Summon:
+                Summon(world, user, key!.Value, bound!);
+                break;
+            case CapsuleAction.Recall:
+                Recall(world, user, key!.Value, bound!);
+                break;
         }
 
-        _clicks.Clear();
+        if (_bound.ContainsKey(key ?? 0) && capsule.Record != HusbandryData.FilledCapsule) Refill(world, user, capsule, inventory);
     }
-
-    /// <summary>
-    /// Whether a capsule holds an animal.
-    /// </summary>
-    public static bool Full(ItemInstance capsule) => Key(capsule) is not null;
-
-    /// <summary>
-    /// The key a full capsule holds, or null for an empty one.
-    /// </summary>
-    static int? Key(ItemInstance capsule) =>
-        capsule.ModTag.StartsWith(TagPrefix, StringComparison.Ordinal)
-        && int.TryParse(capsule.ModTag.AsSpan(TagPrefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out int key)
-            ? key
-            : null;
 
     #region Catching
 
     /// <summary>
-    /// Puts the nearest catchable animal in one capsule of the stack.
+    /// A right click on an empty capsule: puts the nearest catchable beast beside the character in it.
     /// </summary>
     void Catch(World world, int user, ItemInstance capsule, Inventory inventory)
     {
@@ -107,27 +202,33 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     /// <summary>
     /// Catches the beast a thrown capsule hit (<see cref="CapsuleThrows"/>): as a right click beside it would.
     /// </summary>
-    public void CatchThrown(World world, int user, ItemInstance capsule, Inventory inventory, int target) => Put(world, user, capsule, inventory, target);
+    public void CatchThrown(World world, int user, ItemInstance capsule, Inventory inventory, int target)
+    {
+        Put(world, user, capsule, inventory, target);
+        Publish();
+    }
 
     /// <summary>
-    /// Puts an animal in one capsule of the stack and takes it out of the world.
+    /// Binds a beast to a new filled capsule, which drops where it lay, uses up one empty capsule of the stack and takes the beast out of the world.
     /// </summary>
     void Put(World world, int user, ItemInstance capsule, Inventory inventory, int target)
     {
         var table = world.Characters;
         var cold = table.Cold(target)!;
-        bool female = sexes.Female(cold);
+        var at = table.Next[target].Position;
+        if (population?.Data.Items.Create(HusbandryData.FilledCapsule) is not { } filled) return;
+
         int key = _nextKey++;
-        _stored[key] = StoredBeast.Of(cold, female);
+        _bound[key] = new BoundBeast(StoredBeast.Of(cold, sexes.Female(cold)));
+        filled.ModTag = Tag(key);
+        UseOne(capsule, inventory);
         DropCarried(world, target, cold);
-        Fill(world, user, capsule, inventory, key);
+        world.GroundItems.Drop(filled, at, 0);
         if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
 
         AnimalWork.Say(world, user, HusbandryText.Format("Caught {1}!", cold.Name));
-        log($"husbandry: {table.Cold(user)!.Name} caught {cold.Name} ({cold.RecordId}) in a capsule");
-        var id = table.IdOf(target);
-        world.Uniques.Left(id);
-        table.Remove(id);
+        log($"husbandry: {table.Cold(user)!.Name} caught {cold.Name} ({cold.RecordId}) in capsule {key}");
+        Leave(world, target);
     }
 
     /// <summary>
@@ -155,14 +256,28 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
 
     /// <summary>
     /// Whether an animal may be caught now: one of the player's whose race supports summoning, or a knocked-out one whose race supports taming
-    /// (docs/husbandry.md "Supported animals"); never one carried.
+    /// (docs/husbandry.md "Supported animals"); never one carried, nor one already out of a capsule (its own capsule calls it back).
     /// </summary>
     public bool Catchable(CharacterCold c)
     {
-        if (!c.CarriedBy.IsNone) return false;
+        if (!c.CarriedBy.IsNone || IsOut(c.LastingId)) return false;
         if (c.IsPlayer) return registry.Supports(c, AnimalSupport.Summoning);
 
         return c.Medical is { Unconscious: true } && registry.Supports(c, AnimalSupport.Taming);
+    }
+
+    /// <summary>
+    /// Whether a body is a capsule's beast that is out.
+    /// </summary>
+    bool IsOut(LastingId id) => !id.IsNone && _bound.Values.Any(b => b.Out == id);
+
+    /// <summary>
+    /// Takes one capsule off a stack, or the capsule itself when it is the last.
+    /// </summary>
+    static void UseOne(ItemInstance capsule, Inventory inventory)
+    {
+        if (capsule.Quantity > 1) capsule.Quantity -= 1;
+        else inventory.Remove(capsule);
     }
 
     /// <summary>
@@ -181,39 +296,26 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     }
 
     /// <summary>
-    /// Marks one capsule of the stack full: the capsule itself when alone, else a new one split off (on the ground when the inventory has no room).
+    /// Takes a character out of the world, as the engine removes a fed corpse.
     /// </summary>
-    void Fill(World world, int user, ItemInstance capsule, Inventory inventory, int key)
+    static void Leave(World world, int slot)
     {
-        if (capsule.Quantity <= 1)
-        {
-            capsule.ModTag = TagPrefix + key.ToString(CultureInfo.InvariantCulture);
-            return;
-        }
-
-        if (population?.Data.Items.Create(capsule.Record) is not { } full) return;
-
-        capsule.Quantity -= 1;
-        full.ModTag = TagPrefix + key.ToString(CultureInfo.InvariantCulture);
-        if (!inventory.Add(full)) world.GroundItems.Drop(full, world.Characters.Next[user].Position, 0);
+        var id = world.Characters.IdOf(slot);
+        world.Uniques.Left(id);
+        world.Characters.Remove(id);
     }
 
     #endregion
 
-    #region Summoning
+    #region Summoning and recalling
 
     /// <summary>
-    /// Brings a capsule's animal out beside the user as one of the player's, in the user's squad; the capsule is empty again.
+    /// Brings the beast out beside the user as one of the player's, in the user's squad; the capsule stays bound to it.
     /// </summary>
-    void Summon(World world, int user, ItemInstance capsule, int key)
+    void Summon(World world, int user, int key, BoundBeast bound)
     {
         var table = world.Characters;
-        if (!_stored.TryGetValue(key, out var beast))
-        {
-            capsule.ModTag = "";
-            return;
-        }
-
+        var beast = bound.Beast;
         var at = table.Next[user].Position;
         var spot = new Vector2(at.X + SummonDistance, at.Z);
         var id = population?.SpawnIntoPlayerSquad(world, table.Cold(user)!.SquadId, beast.Record, spot, beast.Age) ?? CharacterId.None;
@@ -226,38 +328,123 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         var cold = table.Cold(slot)!;
         beast.Restore(cold);
         if (cold.PortraitSerial is { } serial) sexes.Assigned[serial] = beast.Female;
-        _stored.Remove(key);
-        capsule.ModTag = "";
+        bound.Out = world.LastingIds.GetOrGive(id);
+        bound.UsedAt = world.Tick;
         AnimalWork.Say(world, slot, HusbandryText.Format("{1}, come out!", beast.Name));
+        log($"husbandry: capsule {key} summoned {beast.Name}");
     }
+
+    /// <summary>
+    /// Calls the capsule's beast back in when it is within <see cref="RecallReach"/> of the user, keeping its stats, skills and traits as they are
+    /// now; a beast that died or is gone for good leaves the capsule empty.
+    /// </summary>
+    void Recall(World world, int user, int key, BoundBeast bound)
+    {
+        var table = world.Characters;
+        var id = world.LastingIds.Find(bound.Out);
+        if (!table.TryResolveNext(id, out int slot) || table.Cold(slot) is not { Medical.Dead: false } cold)
+        {
+            if (!world.LastingIds.KeptIds().Contains(bound.Out)) Lost(world, user, key, bound);
+            else AnimalWork.Say(world, user, HusbandryText.Format("{1} is too far away to call back", bound.Beast.Name));
+            return;
+        }
+
+        if (Vector3.Distance(table.Next[slot].Position, table.Next[user].Position) > RecallReach)
+        {
+            AnimalWork.Say(world, user, HusbandryText.Format("{1} is too far away to call back", cold.Name));
+            return;
+        }
+
+        bound.Beast = StoredBeast.Of(cold, sexes.Female(cold), bound.Beast.Traits);
+        bound.Out = default;
+        bound.UsedAt = world.Tick;
+        DropCarried(world, slot, cold);
+        if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
+
+        AnimalWork.Say(world, user, HusbandryText.Format("{1}, come back!", cold.Name));
+        log($"husbandry: capsule {key} recalled {cold.Name}");
+        Leave(world, slot);
+    }
+
+    /// <summary>
+    /// The beast died or is gone for good: the capsule is unbound (it becomes empty at its next click).
+    /// </summary>
+    void Lost(World world, int user, int key, BoundBeast bound)
+    {
+        _bound.Remove(key);
+        AnimalWork.Say(world, user, HusbandryText.Format("{1} is gone; the capsule is empty", bound.Beast.Name));
+        log($"husbandry: capsule {key} lost {bound.Beast.Name}");
+    }
+
+    /// <summary>
+    /// A filled capsule with no beast bound to it becomes an empty capsule in the same inventory (on the ground when it has no room).
+    /// </summary>
+    void Emptied(World world, int user, ItemInstance capsule, Inventory inventory)
+    {
+        inventory.Remove(capsule);
+        if (population?.Data.Items.Create(HusbandryData.Capsule) is not { } empty) return;
+
+        if (!inventory.Add(empty)) world.GroundItems.Drop(empty, world.Characters.Next[user].Position, 0);
+    }
+
+    /// <summary>
+    /// An older save's full capsule (the empty record with a key) becomes a filled capsule with the same key, in the same inventory.
+    /// </summary>
+    void Refill(World world, int user, ItemInstance capsule, Inventory inventory)
+    {
+        if (population?.Data.Items.Create(HusbandryData.FilledCapsule) is not { } filled) return;
+
+        filled.ModTag = capsule.ModTag;
+        UseOne(capsule, inventory);
+        if (!inventory.Add(filled)) world.GroundItems.Drop(filled, world.Characters.Next[user].Position, 0);
+    }
+
+    /// <summary>
+    /// A filled capsule's tag for a key.
+    /// </summary>
+    static string Tag(int key) => TagPrefix + key.ToString(CultureInfo.InvariantCulture);
 
     #endregion
 
-    #region Saving and the debug view
+    #region Saving, the views and the debug row
 
     /// <summary>
-    /// Writes the kept animals.
+    /// Publishes the tooltips' views; a serial step calls it after each change, and once a load has read the beasts.
+    /// </summary>
+    public void Publish() => _views = _bound.ToFrozenDictionary(b => b.Key, b => new BeastView(b.Value.Beast, !b.Value.Out.IsNone));
+
+    /// <summary>
+    /// Writes the beasts (sidecar version 6).
     /// </summary>
     public void Write(BinaryWriter w)
     {
         w.Write(_nextKey);
-        w.Write(_stored.Count);
-        foreach (var (key, beast) in _stored)
+        w.Write(_bound.Count);
+        foreach (var (key, bound) in _bound)
         {
             w.Write(key);
-            beast.Write(w);
+            bound.Beast.Write(w);
+            w.Write(bound.Out.Value);
         }
     }
 
     /// <summary>
-    /// Reads them back.
+    /// Reads them back; before version 6 every beast was inside its capsule.
     /// </summary>
-    public void Read(BinaryReader r)
+    public void Read(BinaryReader r, int version)
     {
-        _stored.Clear();
+        _bound.Clear();
         _nextKey = r.ReadInt32();
         int count = r.ReadInt32();
-        for (int k = 0; k < count; k++) _stored[r.ReadInt32()] = StoredBeast.Read(r);
+        for (int k = 0; k < count; k++)
+        {
+            int key = r.ReadInt32();
+            var bound = new BoundBeast(StoredBeast.Read(r, version));
+            if (version >= 6) bound.Out = new LastingId(r.ReadUInt64());
+            _bound[key] = bound;
+        }
+
+        Publish();
     }
 
     /// <summary>
@@ -266,27 +453,30 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     public void Hash(ref StateHasher hasher)
     {
         hasher.Add(_nextKey);
-        hasher.Add(_stored.Count);
-        hasher.Add(_clicks.Count);
-        foreach (var (key, beast) in _stored)
+        hasher.Add(_bound.Count);
+        foreach (var (key, bound) in _bound)
         {
             hasher.Add(key);
-            beast.Hash(ref hasher);
+            hasher.Add(bound.Out.Value);
+            hasher.Add(bound.UsedAt);
+            bound.Beast.Hash(ref hasher);
         }
     }
 
     /// <summary>
-    /// The debug view: each kept animal.
+    /// The debug view: each bound beast.
     /// </summary>
     public string Describe()
     {
-        if (_stored.Count == 0) return "No animals in capsules.";
+        if (_bound.Count == 0) return "No animals in capsules.";
 
         var text = new StringBuilder();
-        foreach (var (key, beast) in _stored)
+        foreach (var (key, bound) in _bound)
         {
+            var beast = bound.Beast;
             string sex = beast.Female ? "female" : "male";
-            text.AppendLine($"Capsule {key}: {beast.Name} ({sex}, age {beast.Age:0.00})");
+            string where = bound.Out.IsNone ? "inside" : "out";
+            text.AppendLine($"Capsule {key}: {beast.Name} ({beast.Kind}, {sex}, age {beast.Age:0.00}, {where})");
         }
 
         return text.ToString();
