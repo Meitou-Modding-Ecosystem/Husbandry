@@ -161,7 +161,8 @@ two Iron Plates and one Leather (`ingredients` 200 / 100), 4 game hours each (`p
 ingredients' worth times 1 + `profitability`, ignoring `value`, so the data phase sets `profitability` from the ingredients' worth in the loaded
 data to keep the capsule at 500 cats (`BenchData.AddRecipe`; 0.17 on the base game). Its functionality is the game's `medical crafting basic`
 with only the capsule listed and no Fabrics input; `use range` 10. Its look is `Husbandry/Structures/capsule-bench.glb` (1.2 m, textures 2048;
-building `900300-Husbandry.mod`) with a use node 10.4 units out at local +Z (the toolboard is at -Z); it keeps the Basic Medical Workbench's
+building `900300-Husbandry.mod`) with two use nodes 10.4 units out at local +Z (the toolboard is at -Z), 3 units either side of its middle (the
+game reads use nodes as the operator's spot only with two or more); it keeps the Basic Medical Workbench's
 build cost (3 Iron Plates) and power draw (5), and is that bench when the import has not run.
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
