@@ -45,10 +45,12 @@ public static class BenchData
     const float OperatorReach = 10;
 
     /// <summary>
-    /// The use node on its own look: 6 units (room for a body) in front of the table's front edge at local +Z 4.4 (the toolboard is at -Z),
-    /// turned -90 degrees about Y as the game's front nodes are, so its marker points back at the bench.
+    /// The use nodes on its own look: 6 units (room for a body) in front of the table's front edge at local +Z 4.4 (the toolboard is at -Z), 3 units
+    /// either side of its middle, turned -90 degrees about Y as the game's front nodes are, so their markers point back at the bench. Two, because
+    /// the game takes a machine's position marker from its use nodes only when it has two or more; with one the operator works from the footprint
+    /// and can end up at the back or inside the model.
     /// </summary>
-    static readonly Vector3 NodeAt = new(0, 0, 10.4f);
+    internal static readonly Vector3[] FrontNodes = [new(-3, 0, 10.4f), new(3, 0, 10.4f)];
 
     /// <summary>
     /// The game's use node record.
@@ -101,7 +103,7 @@ public static class BenchData
     }
 
     /// <summary>
-    /// The bench: its own look when the data has it (with the stand-in's cost and power and a front use node), else the stand-in's.
+    /// The bench: its own look when the data has it (with the stand-in's cost and power and two front use nodes), else the stand-in's.
     /// </summary>
     static FcsRecord BenchRecord(GameDatabase game)
     {
@@ -125,7 +127,7 @@ public static class BenchData
     }
 
     /// <summary>
-    /// On its own look the bench keeps the stand-in's build cost and power draw, and its operator stands at a use node in front of it.
+    /// On its own look the bench keeps the stand-in's build cost and power draw, and its operator stands at one of its use nodes in front of it.
     /// </summary>
     static void WearOwnLook(GameRecord standIn, FcsRecord record)
     {
@@ -134,7 +136,8 @@ public static class BenchData
         else record.Ints.Remove("power output");
 
         var turn = Quaternion.CreateFromAxisAngle(Vector3.UnitY, -MathF.PI / 2);
-        record.Instances.Add(new FcsInstance { Id = $"usenode{record.Instances.Count + 1}", Target = UseNode, Position = NodeAt, Rotation = turn });
+        foreach (var at in FrontNodes)
+            record.Instances.Add(new FcsInstance { Id = $"usenode{record.Instances.Count + 1}", Target = UseNode, Position = at, Rotation = turn });
     }
 
     /// <summary>
