@@ -12,17 +12,18 @@ using Meitou.Simulation.Items;
 namespace Husbandry.Capsules;
 
 /// <summary>
-/// The player chose Throw Beast Capsule on a knocked-out beast with these characters selected.
+/// The player chose Throw Beast Capsule on a catchable beast (a knocked-out one, or one of the player's own) with these characters selected.
 /// </summary>
 public sealed record ThrowCapsuleCommand(IReadOnlyList<CharacterId> Throwers, CharacterId Target) : SimCommand;
 
 /// <summary>
-/// Throwing a Beast Capsule (docs/husbandry.md "Beast Capsules"): the player right-clicks a knocked-out beast and chooses Throw Beast Capsule; the
+/// Throwing a Beast Capsule (docs/husbandry.md "Beast Capsules"): the player right-clicks a beast a capsule may catch (<see
+/// cref="CapsuleSystem.Catchable"/>: a knocked-out one, or one of the player's own not bound to a capsule) and chooses Throw Beast Capsule; the
 /// first selected character holding an empty capsule walks to within <see cref="Range"/> of it, stops, turns to face it and plays the throw,
 /// held facing it until the clip ends and the capsule has landed. Another order or a hit on the thrower before then interrupts the throw, which
 /// then fails (the capsule is kept). The capsule flies from the hand (<see cref="Flights"/>, drawn by the interface) and catches the beast as a
-/// right click on the capsule beside it would, unless the beast breaks free (<see cref="BreakFreeChance"/>): it comes to, healed just enough to
-/// stand, and the capsule is kept. Throws in progress are not saved. Serial steps, except <see cref="Move"/> and the published views.
+/// right click on the capsule beside it would, unless a beast not the player's breaks free (<see cref="BreakFreeChance"/>): it comes to, healed
+/// just enough to stand, and the capsule is kept. The player's own animals never break free. Throws in progress are not saved. Serial steps, except <see cref="Move"/> and the published views.
 /// </summary>
 public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, CombatTechnique? throwMove, RngPurpose purpose)
 {
@@ -286,7 +287,7 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         if (Seconds(world, t) < t.LandSeconds) return true;
 
         if (Landed.Count < MaxLanded) Landed.Enqueue(world.Characters.Next[beast].Position);
-        if (BreaksFree(world, t)) Rouse(world, thrower, beast);
+        if (!table.Cold(beast)!.IsPlayer && BreaksFree(world, t)) Rouse(world, thrower, beast);
         else capsules.CatchThrown(world, thrower, capsule, cold.Inventory!, beast);
         t.Landed = true;
         return true;
@@ -457,7 +458,7 @@ public sealed class CapsuleThrows(CapsuleSystem capsules, string capsuleRecord, 
         {
             if (!table.Next[s].Alive || table.Cold(s) is not { Medical.Dead: false } c) continue;
 
-            if (!c.IsPlayer && capsules.Catchable(c)) catchable.Add(table.IdOf(s));
+            if (capsules.Catchable(c)) catchable.Add(table.IdOf(s));
             if (c.IsPlayer && EmptyCapsule(world, s) is not null) holders.Add(table.IdOf(s));
         }
 

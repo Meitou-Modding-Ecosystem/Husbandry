@@ -182,17 +182,20 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
   player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead,
-  carried or already out of a capsule. The nearest goes in: what it carried drops where it lay, one empty capsule of the stack is used up,
-  the character is removed from the world and a **Filled Beast Capsule** bound to it drops on the ground where it lay, to be picked up.
-- **Throw**: right-click a knocked-out beast a capsule may catch and choose **Throw Beast Capsule**: the first selected character holding an
+  carried or already out of a capsule (one capsule per beast: one out of its capsule floats "<name> already has a Beast Capsule"). The nearest
+  goes in: what it carried drops where it lay, one empty capsule of the stack is used up, a **Filled Beast Capsule** bound to it drops on the
+  ground where it lay, to be picked up, and the character leaves the world at the slow world of the same tick (`CapsuleSystem.Settle`: an item
+  use runs in the inputs phase, where `CharacterTable.Remove` throws); a recall does the same.
+- **Throw**: right-click a beast a capsule may catch (a knocked-out one, or one of the player's own as above) and choose **Throw Beast
+  Capsule**: the first selected character holding an
   empty capsule walks to within 300 units (30 m) of it (a move order, renewed every 2 s), stops (a move order to where it stands) and plays
   the throw: the clip is 1.7 s, the hand lets go 0.9 s in and the capsule flies at 300 units a second (`CapsuleThrows.LandAt`). Each tick until
   the clip has ended and the capsule has landed the thrower is turned to face the beast (`CharacterHot.Yaw`). Before the landing, another
   order (a new order in hand, or a goal more than 5 units from where it stopped) or a hit on the thrower (`ICombatHitObserver`) interrupts the
   throw: it fails with "Throw interrupted" and the capsule is kept. In flight a red streak runs from the hand (`CapsuleThrows.Hand`, in the
   thrower's frame) to the beast on an arc a fifth of the distance high (`CapsuleFlights`: one small puff of `Poison_Gas_White` tinted red a
-  tick, from `AddFrame`; display only: the engine has no way for a mod to draw a flying item). On landing it catches as above, except 20% of
-  the time (`BreakFreeChance`, rolled from the world seed, the beast and the tick): the beast breaks free, its KO timer ends and its vital parts
+  tick, from `AddFrame`; display only: the engine has no way for a mod to draw a flying item). On landing it catches as above, except for a beast
+  not the player's 20% of the time (`BreakFreeChance`, rolled from the world seed, the beast and the tick; the player's own never break free): the beast breaks free, its KO timer ends and its vital parts
   (flesh − stun + rig, stun first) and blood come up to 1, just enough that it stands and fights; the capsule is kept. Where it lands a pink
   mist rises for 3 s (the same particle system tinted, drawn by `CapsuleUi` from the landings the system queues). The throw plays the clip
   `husbandry_capsule_throw` (a disabled COMBAT_TECHNIQUE, so no fight picks it, played as a mod combat move; `ThrowData`) from

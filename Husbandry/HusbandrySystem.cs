@@ -241,6 +241,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _trainers.Step(world);
         _drills.Step(world);
         _throws.Run(world);
+        _capsules.Settle(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
         if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
 

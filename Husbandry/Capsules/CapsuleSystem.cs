@@ -101,6 +101,12 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     readonly SortedDictionary<int, BoundBeast> _bound = [];
 
     /// <summary>
+    /// The bodies that went into a capsule this tick, taken out of the world at the slow world (<see cref="Settle"/>): an item use runs in the
+    /// inputs phase, where the engine refuses removals (<c>CharacterTable.Remove</c> throws there).
+    /// </summary>
+    readonly List<(CharacterId Id, CharacterCold Cold)> _leaving = [];
+
+    /// <summary>
     /// The beasts by key as of the last change, for the tooltips (host's thread).
     /// </summary>
     volatile FrozenDictionary<int, BeastView> _views = FrozenDictionary<int, BeastView>.Empty;
@@ -186,17 +192,20 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     #region Catching
 
     /// <summary>
-    /// A right click on an empty capsule: puts the nearest catchable beast beside the character in it.
+    /// A right click on an empty capsule: puts the nearest catchable beast beside the character in it; with none, says why (an animal in reach that
+    /// already has a capsule, or nothing in reach).
     /// </summary>
     void Catch(World world, int user, ItemInstance capsule, Inventory inventory)
     {
-        if (Target(world, user) is not { } target)
+        if (Target(world, user) is { } target)
         {
-            AnimalWork.Say(world, user, "Nothing to catch: knock a beast out and stand next to it");
+            Put(world, user, capsule, inventory, target);
             return;
         }
 
-        Put(world, user, capsule, inventory, target);
+        if (Nearest(world, user, c => IsOut(c.LastingId)) is { } bound)
+            AnimalWork.Say(world, user, HusbandryText.Format("{1} already has a Beast Capsule", world.Characters.Cold(bound)!.Name));
+        else AnimalWork.Say(world, user, "Nothing to catch: stand next to one of your animals, or knock a beast out");
     }
 
     /// <summary>
@@ -234,7 +243,12 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     /// <summary>
     /// The nearest animal within reach that may be caught (<see cref="Catchable"/>).
     /// </summary>
-    int? Target(World world, int user)
+    int? Target(World world, int user) => Nearest(world, user, Catchable);
+
+    /// <summary>
+    /// The nearest living character other than the user within <see cref="CatchReach"/> that <paramref name="fits"/>.
+    /// </summary>
+    static int? Nearest(World world, int user, Func<CharacterCold, bool> fits)
     {
         var table = world.Characters;
         var at = table.Next[user].Position;
@@ -242,7 +256,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         float bestDistance = CatchReach;
         for (int s = 0; s < table.HighWater; s++)
         {
-            if (!table.Next[s].Alive || table.Cold(s) is not { Medical.Dead: false } c || !Catchable(c)) continue;
+            if (s == user || !table.Next[s].Alive || table.Cold(s) is not { Medical.Dead: false } c || !fits(c)) continue;
 
             float d = Vector3.Distance(table.Next[s].Position, at);
             if (d > bestDistance) continue;
@@ -260,7 +274,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     /// </summary>
     public bool Catchable(CharacterCold c)
     {
-        if (!c.CarriedBy.IsNone || IsOut(c.LastingId)) return false;
+        if (!c.CarriedBy.IsNone || IsOut(c.LastingId) || Leaving(c)) return false;
         if (c.IsPlayer) return registry.Supports(c, AnimalSupport.Summoning);
 
         return c.Medical is { Unconscious: true } && registry.Supports(c, AnimalSupport.Taming);
@@ -296,14 +310,30 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     }
 
     /// <summary>
-    /// Takes a character out of the world, as the engine removes a fed corpse.
+    /// Marks a character to leave the world at the slow world (<see cref="Settle"/>); until then it can't be caught again.
     /// </summary>
-    static void Leave(World world, int slot)
+    internal void Leave(World world, int slot) => _leaving.Add((world.Characters.IdOf(slot), world.Characters.Cold(slot)!));
+
+    /// <summary>
+    /// The serial slow-world step: takes the bodies that went into a capsule out of the world, as the engine removes a fed corpse.
+    /// </summary>
+    public void Settle(World world)
     {
-        var id = world.Characters.IdOf(slot);
-        world.Uniques.Left(id);
-        world.Characters.Remove(id);
+        foreach (var (id, _) in _leaving)
+        {
+            if (!world.Characters.TryResolveNext(id, out _)) continue;
+
+            world.Uniques.Left(id);
+            world.Characters.Remove(id);
+        }
+
+        _leaving.Clear();
     }
+
+    /// <summary>
+    /// Whether a body went into a capsule this tick and has yet to leave the world.
+    /// </summary>
+    bool Leaving(CharacterCold c) => _leaving.Exists(l => ReferenceEquals(l.Cold, c));
 
     #endregion
 
