@@ -8,6 +8,7 @@ Needs Meitou 0.22.2 or later (nightlies included), below 0.23 (`gameVersion`; co
 engine fork's `fork` branch, the engine assemblies stamped 0.22.2.0 (`Directory.Build.rsp`). Uses the engine's mod jobs (`AddJobType`,
 `AddJobOffer`; task types 4510 to 4515, 4520 to 4523), mod skills and status effects, `PopulationSystem.SpawnIntoPlayerSquad` with an age and `SpawnPlatoon` (engine docs/modding.md "Mod jobs",
 "World hooks").
+Source art for animals not yet in the mod: [animals/README.md](../animals/README.md).
 
 ## Setting up a ranch
 
