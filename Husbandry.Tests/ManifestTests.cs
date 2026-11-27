@@ -26,21 +26,17 @@ public sealed class ManifestTests
     }
 
     /// <summary>
-    /// The engine's own reader accepts the manifest (a malformed one refuses the mod in game): it needs Animal Behaviors and may use Kenshi Races
-    /// (the trainers' drill clip) under the id the code tests for.
+    /// The engine's own reader accepts the manifest (a malformed one refuses the mod in game), and it depends on Animal Behaviors only.
     /// </summary>
     [Fact]
-    public void The_engine_reads_the_manifest_and_its_dependencies()
+    public void The_engine_reads_the_manifest_and_its_dependency()
     {
         var manifest = CodeModManifest.Read(Path.Combine(AppContext.BaseDirectory, "meitou.json"));
 
-        Assert.Equal(2, manifest.DependsOn.Count);
-        var animals = manifest.DependsOn.Single(d => d.Id == AnimalBehaviors.AnimalBehaviorsMod.Id);
-        Assert.False(animals.Optional);
-        Assert.NotNull(animals.Range);
-        var races = manifest.DependsOn.Single(d => d.Id == KenshiRaces.KenshiRacesMod.Id);
-        Assert.True(races.Optional);
-        Assert.NotNull(races.Range);
+        var dependency = Assert.Single(manifest.DependsOn);
+        Assert.Equal(AnimalBehaviors.AnimalBehaviorsMod.Id, dependency.Id);
+        Assert.False(dependency.Optional);
+        Assert.NotNull(dependency.Range);
     }
 
     [Fact]

@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using AnimalBehaviors;
 using Husbandry.Capsules;
 using Husbandry.Training;
@@ -58,19 +57,10 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     CombatTechnique? _throwMove;
 
     /// <summary>
-    /// Kenshi Races' manifest id: an optional dependency, the trainers' drill clip (<see cref="DrillMove"/>).
-    /// </summary>
-    const string KenshiRacesId = "kenshi.races";
-
-    /// <summary>
-    /// The trainers' drill (<see cref="TrainingDrills"/>); null without Kenshi Races.
+    /// The trainers' drill COMBAT_TECHNIQUE (<see cref="ThrowData.DrillTechnique"/>); null when the data phase did not add it (trainers then only
+    /// turn to their animals).
     /// </summary>
     CombatTechnique? _drillMove;
-
-    /// <summary>
-    /// The drill clip's length in seconds.
-    /// </summary>
-    float _drillSeconds;
 
     /// <summary>
     /// The mist where a thrown capsule lands: the game's white poison gas (EFFECT 62780-Newwworld.mod) tinted pink, for <see cref="MistSeconds"/>.
@@ -115,7 +105,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddItemUse(HusbandryData.FilledCapsule, use => _latest?.Capsules.Use(use) ?? false);
         _throwMove = c.Data.Find(ThrowData.Technique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
-        if (c.HasDependency(KenshiRacesId)) (_drillMove, _drillSeconds) = DrillMove(c);
+        _drillMove = c.Data.Find(ThrowData.DrillTechnique) is { } drill ? CombatTechnique.From(drill) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Drills.Move(world, id, tick));
 #if MEITOU_BUILDING_ROWS
         c.AddUi(new StatusUi(() => _latest?.Status));
@@ -144,20 +134,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         _registry.Freeze();
         var animals = _animals!.Current ?? throw new InvalidOperationException("Animal Behaviors built no state for this world.");
         return new HusbandrySystem(context, Settings, _animals.Settings, animals, _registry, c.RngPurpose, c.Log, _throwMove, _drillMove,
-            _drillSeconds);
-    }
-
-    /// <summary>
-    /// The trainer's drill clip from Kenshi Races' animation library, Cartographer (an optional dependency: only called once it is loaded, and
-    /// kept out of line so Husbandry runs without Kenshi Races' assembly).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    static (CombatTechnique? Move, float Seconds) DrillMove(ModContext c)
-    {
-        var clip = KenshiRaces.RaceAnimations.Cartographer;
-        var move = KenshiRaces.AnimationRecords.Technique(c.Data, clip);
-        if (move is null) c.LogError("Husbandry: Kenshi Races has no Cartographer clip; trainers only face their animals.");
-        return (move, clip.Length);
+            ThrowData.DrillSeconds);
     }
 
     /// <summary>

@@ -68,7 +68,7 @@ A `needs-release` label means the merged change only reaches players after promo
 
 ## This repo
 
-- Husbandry (`Husbandry/`, records added in the data phase; docs `docs/husbandry.md`). Locks Animal Behaviors and Kenshi Races (optional at
-  run time: the trainers' drill clip) in `meitou.lock.json`, so `engine` follows the lock's engine commit; don't move it on its own.
+- Husbandry (`Husbandry/`, records added in the data phase; docs `docs/husbandry.md`). Locks Animal Behaviors in `meitou.lock.json`, so
+  `engine` follows the lock's engine commit; don't move it on its own.
 - Husbandry is itself a framework: `IHusbandryApi` (trainable skills). A change to it updates `docs/depending-on-husbandry.md`,
   `.claude/skills/husbandry-dependent` and the tests in `Husbandry.Tests/`, and bumps the minor version.

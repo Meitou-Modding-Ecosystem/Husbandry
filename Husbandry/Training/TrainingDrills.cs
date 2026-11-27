@@ -7,8 +7,8 @@ namespace Husbandry.Training;
 
 /// <summary>
 /// The trainer's drill at a Training Post (docs/husbandry.md "Training"): while a trainer works the post for its animal, every
-/// <see cref="PeriodSeconds"/> from the moment the pair formed the trainer turns to face the animal and plays the drill clip once (Kenshi Races'
-/// <c>kr_cartographer</c> when that mod is loaded, as a mod combat move; without it the trainer only turns). Pairs come from each training check
+/// <see cref="PeriodSeconds"/> from the moment the pair formed the trainer turns to face the animal and plays the drill clip once
+/// (<see cref="Capsules.ThrowData.DrillClip"/>, as a mod combat move; without its record the trainer only turns). Pairs come from each training check
 /// (<see cref="Pair"/>), the facing from every serial step (<see cref="Step"/>). Nothing is saved: a loaded pair starts its drill again.
 /// </summary>
 public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds)
