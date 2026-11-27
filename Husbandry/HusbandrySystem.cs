@@ -103,6 +103,16 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     readonly Trainers _trainers;
 
     /// <summary>
+    /// The trainers' drills at the Training Posts.
+    /// </summary>
+    readonly TrainingDrills _drills;
+
+    /// <summary>
+    /// Each Training Post's one animal, by post id (<see cref="TrainingPost.Choose"/>; not saved: a load picks again in slot order).
+    /// </summary>
+    readonly Dictionary<string, CharacterId> _pupils = [];
+
+    /// <summary>
     /// The Tie up knock-downs.
     /// </summary>
     readonly TieUp _tieUp;
@@ -146,7 +156,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// A system for one world.
     /// </summary>
     public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, AnimalSettings pens, IAnimalState animals, AnimalRegistry registry,
-        RngPurpose purpose, Action<string> log, CombatTechnique? throwMove)
+        RngPurpose purpose, Action<string> log, CombatTechnique? throwMove, CombatTechnique? drillMove, float drillSeconds)
     {
         _settings = settings;
         _pens = pens;
@@ -162,6 +172,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
         _trainers = new Trainers(registry);
+        _drills = new TrainingDrills(drillMove, drillSeconds);
         _capsules = new CapsuleSystem(_population, _sexes, registry, log);
         _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove, purpose);
     }
@@ -190,6 +201,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// The capsule throws, for the right-click row and the throw animation.
     /// </summary>
     public CapsuleThrows Throws => _throws;
+
+    /// <summary>
+    /// The trainers' drills, for their animation.
+    /// </summary>
+    public TrainingDrills Drills => _drills;
 
     /// <summary>
     /// The debug row's view of the capsules (written in the tick, read on the host's thread).
@@ -223,6 +239,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         var settings = _settings.Copy();
         _tieUp.Apply(world);
         _trainers.Step(world);
+        _drills.Step(world);
         _throws.Run(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
         if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
@@ -255,7 +272,8 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
         _workedAt = world.GameHours;
         var pens = _pens.Copy();
-        var lessons = TrainingPost.Run(world, _registry, pens, _purpose, hours, _hunting.MeatId);
+        var lessons = TrainingPost.Run(world, _registry, pens, _purpose, hours, _hunting.MeatId, _pupils);
+        _drills.Pair(world, lessons);
         Guarding.Run(world, pens, _purpose, hours);
         _fetching.Run(world);
         _hunting.Run(world, pens, _purpose);

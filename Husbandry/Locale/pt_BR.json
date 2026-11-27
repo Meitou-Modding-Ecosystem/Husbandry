@@ -81,6 +81,8 @@
   "Animal Handling": "Trato com animais",
   "How fast this person trains animals at a Training Post: an animal learns four times as fast from a trainer at 50 as from one at 1.": "A rapidez com que esta pessoa adestra animais num poste de adestramento: um animal aprende quatro vezes mais rápido com um adestrador no nível 50 do que com um no nível 1.",
   "Waiting for a trainer": "Esperando um adestrador",
+  "This Training Post already has an animal": "Este poste de adestramento já tem um animal",
+  "Another trainer works this post": "Outro adestrador trabalha neste poste",
   "No Raw Meat for treats: training at half speed": "Sem carne crua como petisco: adestramento na metade da velocidade",
   "Trained by {1}": "Adestrado por {1}",
   "{1}: {2}": "{1}: {2}",

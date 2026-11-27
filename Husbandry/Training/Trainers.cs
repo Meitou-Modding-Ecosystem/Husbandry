@@ -14,7 +14,7 @@ namespace Husbandry.Training;
 
 /// <summary>
 /// The Training Post's trainers (docs/husbandry.md "Training"): a person given the post's Train animals job walks to the front of the post and
-/// works there while an animal of the player's holds a training job on it; an animal learns only from a working trainer, one animal a trainer, at
+/// works there while an animal of the player's holds a training job on it, one trainer a post; an animal learns only from a working trainer, at
 /// a rate set by the trainer's Animal Handling (<see cref="Rate"/>). The job's contributor to the chooser (<see cref="IJobSource"/>) and the serial
 /// step that turns an arrived walk into work. Nothing of its own is saved: the engine saves the job, and a loaded trainer walks to the post again.
 /// </summary>
@@ -93,6 +93,7 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
     public DecisionCheck CanRun(World world, int slot, int k)
     {
         if (PostOf(world, slot, k) is not { } post || !HasPupils(world, post)) return DecisionCheck.No(null);
+        if (Taken(world, slot, post)) return DecisionCheck.No(HusbandryText.Get("Another trainer works this post"));
 
         return OnJob(world, slot, k) ? DecisionCheck.Runs : DecisionCheck.Run;
     }
@@ -143,7 +144,8 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
     }
 
     /// <summary>
-    /// The trainers at work, by post id, each post's in slot order: people of the player's standing at the post on its job, up and out of a fight.
+    /// The trainer at work at each post, by post id: the first in slot order of the people of the player's standing at the post on its job, up and
+    /// out of a fight (a post takes one trainer).
     /// </summary>
     public static Dictionary<string, Queue<int>> Working(World world)
     {
@@ -155,7 +157,7 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
 
             string site = cold.Running!.Site!;
             if (!posts.TryGetValue(site, out var queue)) posts[site] = queue = new Queue<int>();
-            queue.Enqueue(s);
+            if (queue.Count == 0) queue.Enqueue(s);
         }
 
         return posts;
@@ -209,6 +211,21 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
         {
             if (!table.Next[s].Alive || table.Cold(s) is not { IsPlayer: true, DiedTick: < 0 } cold || !SquadRegistry.IsAnimal(cold)) continue;
             if (cold.Jobs.Any(j => j.Site == post.Id && registry.TrainingTypes.Contains(j.Type))) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether another living character walks to the post on this job or works it: a post takes one trainer.
+    /// </summary>
+    static bool Taken(World world, int slot, BuildSite post)
+    {
+        var table = world.Characters;
+        for (int s = 0; s < table.HighWater; s++)
+        {
+            if (s == slot || !table.Next[s].Alive || table.Cold(s) is not { DiedTick: < 0 } cold) continue;
+            if (cold.Running is { Source: TaskSource.Job, Row: Type, Site: { } id } && id == post.Id) return true;
         }
 
         return false;
