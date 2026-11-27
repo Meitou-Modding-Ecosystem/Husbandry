@@ -203,7 +203,9 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
             return;
         }
 
-        if (Nearest(world, user, c => IsOut(c.LastingId)) is { } bound)
+        if (Nearest(world, user, c => Packed(c) && MayHold(c)) is { } packed)
+            AnimalWork.Say(world, user, HusbandryText.Format("Take {1}'s backpack off first", world.Characters.Cold(packed)!.Name));
+        else if (Nearest(world, user, c => IsOut(c.LastingId)) is { } bound)
             AnimalWork.Say(world, user, HusbandryText.Format("{1} already has a Beast Capsule", world.Characters.Cold(bound)!.Name));
         else AnimalWork.Say(world, user, "Nothing to catch: stand next to one of your animals, or knock a beast out");
     }
@@ -270,15 +272,26 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
 
     /// <summary>
     /// Whether an animal may be caught now: one of the player's whose race supports summoning, or a knocked-out one whose race supports taming
-    /// (docs/husbandry.md "Supported animals"); never one carried, nor one already out of a capsule (its own capsule calls it back).
+    /// (docs/husbandry.md "Supported animals"); never one carried, one wearing a backpack, nor one already out of a capsule (its own capsule calls
+    /// it back).
     /// </summary>
-    public bool Catchable(CharacterCold c)
+    public bool Catchable(CharacterCold c) => !Packed(c) && MayHold(c);
+
+    /// <summary>
+    /// <see cref="Catchable"/> but for the backpack.
+    /// </summary>
+    bool MayHold(CharacterCold c)
     {
         if (!c.CarriedBy.IsNone || IsOut(c.LastingId) || Leaving(c)) return false;
         if (c.IsPlayer) return registry.Supports(c, AnimalSupport.Summoning);
 
         return c.Medical is { Unconscious: true } && registry.Supports(c, AnimalSupport.Taming);
     }
+
+    /// <summary>
+    /// Whether an animal wears a backpack: it must come off before the animal goes into a capsule.
+    /// </summary>
+    static bool Packed(CharacterCold c) => c.Inventory?.Backpack is not null;
 
     /// <summary>
     /// Whether a body is a capsule's beast that is out.

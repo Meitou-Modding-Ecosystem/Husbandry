@@ -182,7 +182,8 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
   player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead,
-  carried or already out of a capsule (one capsule per beast: one out of its capsule floats "<name> already has a Beast Capsule"). The nearest
+  carried, wearing a backpack (it floats "Take <name>'s backpack off first") or already out of a capsule (one capsule per beast: one out of its
+  capsule floats "<name> already has a Beast Capsule"). The nearest
   goes in: what it carried drops where it lay, one empty capsule of the stack is used up, a **Filled Beast Capsule** bound to it drops on the
   ground where it lay, to be picked up, and the character leaves the world at the slow world of the same tick (`CapsuleSystem.Settle`: an item
   use runs in the inputs phase, where `CharacterTable.Remove` throws); a recall does the same.
