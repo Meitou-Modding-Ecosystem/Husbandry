@@ -219,7 +219,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         if (population?.Data.Items.Create(HusbandryData.FilledCapsule) is not { } filled) return;
 
         int key = _nextKey++;
-        _bound[key] = new BoundBeast(StoredBeast.Of(cold, sexes.Female(cold)));
+        _bound[key] = new BoundBeast(StoredBeast.Take(world, table.IdOf(target), cold, sexes.Female(cold)));
         filled.ModTag = Tag(key);
         UseOne(capsule, inventory);
         DropCarried(world, target, cold);
@@ -326,7 +326,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         }
 
         var cold = table.Cold(slot)!;
-        beast.Restore(cold);
+        beast.Restore(world, id, cold);
         if (cold.PortraitSerial is { } serial) sexes.Assigned[serial] = beast.Female;
         bound.Out = world.LastingIds.GetOrGive(id);
         bound.UsedAt = world.Tick;
@@ -335,8 +335,8 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     }
 
     /// <summary>
-    /// Calls the capsule's beast back in when it is within <see cref="RecallReach"/> of the user, keeping its stats, skills and traits as they are
-    /// now; a beast that died or is gone for good leaves the capsule empty.
+    /// Calls the capsule's beast back in when it is within <see cref="RecallReach"/> of the user, keeping its stats, skills, traits and mod tags
+    /// as they are now; a beast that died or is gone for good leaves the capsule empty.
     /// </summary>
     void Recall(World world, int user, int key, BoundBeast bound)
     {
@@ -355,7 +355,7 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
             return;
         }
 
-        bound.Beast = StoredBeast.Of(cold, sexes.Female(cold), bound.Beast.Traits);
+        bound.Beast = StoredBeast.Take(world, id, cold, sexes.Female(cold));
         bound.Out = default;
         bound.UsedAt = world.Tick;
         DropCarried(world, slot, cold);
