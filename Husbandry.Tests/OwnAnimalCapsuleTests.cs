@@ -5,6 +5,7 @@ using Meitou.Data.Gameplay.Bodies;
 using Meitou.Simulation;
 using Meitou.Simulation.Bodies;
 using Meitou.Simulation.Combat;
+using Meitou.Simulation.Items;
 
 namespace Husbandry.Tests;
 
@@ -56,6 +57,30 @@ public sealed class OwnAnimalCapsuleTests
         Assert.True(capsules.Catchable(Cold(world, own)));
         Assert.False(capsules.Catchable(Cold(world, wild)));
         Assert.False(capsules.Catchable(Cold(world, person)));
+    }
+
+    /// <summary>
+    /// An animal wearing a backpack can't go into a capsule, by hand or by a throw, until the backpack comes off. Catches a pack animal's load
+    /// vanishing into a capsule with it.
+    /// </summary>
+    [Fact]
+    public void An_animal_wearing_a_backpack_is_not_caught()
+    {
+        using var world = Empty();
+        var capsules = Capsules();
+        var throws = new CapsuleThrows(capsules, HusbandryData.Capsule, null, Sexes.Purpose);
+        var own = Spawn(world, animal: true, player: true);
+        var cold = Cold(world, own);
+        cold.Inventory = new Inventory();
+        var pack = new ItemInstance { Record = "pack", Section = "backpack_attach" };
+        cold.Inventory.Items.Add(pack);
+
+        throws.Run(world);
+        Assert.False(capsules.Catchable(cold));
+        Assert.False(throws.Catchable(own));
+
+        cold.Inventory.Items.Remove(pack);
+        Assert.True(capsules.Catchable(cold));
     }
 
     /// <summary>
