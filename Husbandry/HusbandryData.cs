@@ -114,9 +114,11 @@ public static class HusbandryData
                 .FirstOrDefault();
 
     /// <summary>
-    /// The research: level 1, no blueprint, in the Core list, as quick as the game's Item Storage.
+    /// The research: level 1, no blueprint, in the Core list, as quick as the game's Item Storage. It enables the Beast Capsule's craft
+    /// (<c>enable item</c>): a bench lists and makes only the crafts a finished research has enabled, so without it the Capsule Bench shows no
+    /// recipe in the Crafting tab.
     /// </summary>
-    static FcsRecord ResearchRecord()
+    internal static FcsRecord ResearchRecord()
     {
         var record = New(Research, FcsRecordType.Research, "Animal Husbandry");
         record.Ints["level"] = 1;
@@ -139,6 +141,7 @@ public static class HusbandryData
             new FcsReference(BonePile, 0, 0, 0),
             new FcsReference(Capsules.BenchData.Bench, 0, 0, 0),
         ];
+        record.References["enable item"] = [new FcsReference(Capsule, 0, 0, 0)];
         return record;
     }
 

@@ -156,8 +156,9 @@ Its look is its own model, `Husbandry/ItemModels/beast-capsule.glb` (`size` 0.11
 makes mesh `husbandry_beast_capsule.mesh` and MATERIAL_SPECS_CLOTHING `950000-Husbandry.mod` (`ItemModels/ids.json`), and when the data has
 that material the data phase sets the capsule's `mesh`, `ground mesh` and `material` to them (else it keeps the stand-in's look). The Beastmasters keep 5 in their shops after each fill.
 
-**Capsule Bench** (BUILDING `36-`, BUILDING_FUNCTIONALITY `37-Husbandry.mod`, build menu category HUSBANDRY, unlocked by Animal Husbandry) crafts capsules:
-two Iron Plates and one Leather (`ingredients` 200 / 100), 4 game hours each (`production time`). The game prices a crafted item at its
+**Capsule Bench** (BUILDING `36-`, BUILDING_FUNCTIONALITY `37-Husbandry.mod`, build menu category HUSBANDRY, unlocked by Animal Husbandry,
+which also enables the capsule's craft with `enable item`: a bench lists in the Crafting tab, and makes, only research-enabled crafts) crafts
+capsules: two Iron Plates and one Leather (`ingredients` 200 / 100), 4 game hours each (`production time`). The game prices a crafted item at its
 ingredients' worth times 1 + `profitability`, ignoring `value`, so the data phase sets `profitability` from the ingredients' worth in the loaded
 data to keep the capsule at 500 cats (`BenchData.AddRecipe`; 0.17 on the base game). Its functionality is the game's `medical crafting basic`
 with only the capsule listed and no Fabrics input; `use range` 10. Its look is `Husbandry/Structures/capsule-bench.glb` (1.2 m, textures 2048;
