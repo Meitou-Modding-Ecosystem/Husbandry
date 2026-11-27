@@ -1,17 +1,12 @@
 {
   "id": "husbandry",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "apiVersion": 3,
   "gameVersion": ">=0.24.0",
   "dependencies": [
     {
       "id": "animal.behaviors",
       "version": ">=0.2.0 <0.3.0"
-    },
-    {
-      "id": "kenshi.races",
-      "version": ">=0.18.0 <0.19.0",
-      "optional": true
     }
   ],
   "assemblies": [

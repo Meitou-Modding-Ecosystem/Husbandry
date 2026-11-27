@@ -9,15 +9,6 @@
       "sha256": "ed6df2160be1b9714b5985a3bb44f2445f5d9ecc359cac3c396c646150ff9be2",
       "folder": "AnimalBehaviors",
       "engine": "5de4342aa41a45e22420da4642bd846a990dd58f"
-    },
-    {
-      "id": "kenshi.races",
-      "repo": "Meitou-Modding-Ecosystem/KenshiRaces",
-      "tag": "kenshi-races-0.18.0-beta.46dcfbc",
-      "asset": "KenshiRaces-0.18.0-beta.46dcfbc.zip",
-      "sha256": "59be76ac71b71e3629effadc4247d51453b0aea4f33877d769998f54c7fda733",
-      "folder": "KenshiRaces",
-      "engine": "5de4342aa41a45e22420da4642bd846a990dd58f"
     }
   ]
 }

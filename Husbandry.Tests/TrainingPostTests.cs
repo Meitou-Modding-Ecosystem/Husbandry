@@ -1,4 +1,6 @@
+using Husbandry.Capsules;
 using Husbandry.Training;
+using Meitou.Data.Ogre;
 using Meitou.Simulation;
 
 namespace Husbandry.Tests;
@@ -69,11 +71,47 @@ public sealed class TrainingPostTests
     }
 
     /// <summary>
-    /// The drill clip fits in its period, so the trainer rests between drills.
+    /// Husbandry's animation files hold both clips at the lengths the code plays them for, on the game's 30 bones, where the ANIMATION_FILE
+    /// points; the drill fits in its period. Catches a clip missing from a file (the trainer would stand still) or a bad copy.
+    /// </summary>
+    [Theory]
+    [InlineData("husbandry_anims_male.skeleton")]
+    [InlineData("husbandry_anims_female.skeleton")]
+    public void The_animation_files_hold_the_throw_and_the_drill(string file)
+    {
+        var skeleton = OgreSkeletonReader.Read(File.ReadAllBytes(Path.Combine(Folder(), file)));
+
+        Assert.Equal(30, skeleton.Bones.Count);
+        Assert.Equal(1.7f, Assert.Single(skeleton.Animations, a => a.Name == ThrowData.Clip).Length, 0.01f);
+        var drill = Assert.Single(skeleton.Animations, a => a.Name == ThrowData.DrillClip);
+        Assert.Equal(ThrowData.DrillSeconds, drill.Length, 0.01f);
+        Assert.InRange(drill.Length, 0.5f, TrainingDrills.PeriodSeconds - 1);
+        Assert.EndsWith(@"\items\animations\" + file, file.Contains("female") ? ThrowData.FemaleFile : ThrowData.MaleFile);
+    }
+
+    /// <summary>
+    /// The drill's technique plays its clip and is disabled, so no fight picks it.
     /// </summary>
     [Fact]
-    public void The_cartographer_clip_fits_in_the_drill_period()
+    public void The_drill_technique_is_disabled_and_plays_the_drill_clip()
     {
-        Assert.InRange(KenshiRaces.RaceAnimations.Cartographer.Length, 0.5f, TrainingDrills.PeriodSeconds - 1);
+        var drill = Assert.Single(ThrowData.Build(), r => r.StringId == ThrowData.DrillTechnique);
+
+        Assert.Equal(ThrowData.DrillClip, drill.Strings["anim name"]);
+        Assert.True(drill.Bools["disabled"]);
+    }
+
+    /// <summary>
+    /// The repo's Husbandry/items/animations, found walking up from the test's output folder.
+    /// </summary>
+    static string Folder()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            string path = Path.Combine(dir.FullName, "Husbandry", "items", "animations");
+            if (Directory.Exists(path)) return path;
+        }
+
+        throw new DirectoryNotFoundException("No Husbandry/items/animations above " + AppContext.BaseDirectory);
     }
 }

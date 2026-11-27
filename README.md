@@ -2,8 +2,7 @@
 
 Hitching posts, breeding, animal training and capsules for the player's animals in
 [MeitouClient](https://github.com/Meitou-Modding-Ecosystem/MeitouClient). Mod id `husbandry`, built on
-[Animal Behaviors](https://github.com/Meitou-Modding-Ecosystem/AnimalBehaviors) (`animal.behaviors`, locked in `meitou.lock.json`), with
-[Kenshi Races](https://github.com/Meitou-Modding-Ecosystem/KenshiRaces) optional (its animation library plays the Training Post trainer's drill); what it
+[Animal Behaviors](https://github.com/Meitou-Modding-Ecosystem/AnimalBehaviors) (`animal.behaviors`, locked in `meitou.lock.json`); what it
 does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.0-or-later.
 
 - Adding Training Post skills from your own mod (animals are registered with Animal Behaviors): [docs/depending-on-husbandry.md](docs/depending-on-husbandry.md) (agent skill

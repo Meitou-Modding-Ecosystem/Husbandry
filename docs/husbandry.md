@@ -122,9 +122,10 @@ small pieces across the atlas, and 2048 blurs it. Concept art: `concept-art/post
   down when no animal trains there). A post takes **one trainer**: while one walks to it or works it on the job, the chooser refuses the job
   to anyone else ("Another trainer works this post"). An animal without a trainer floats "Waiting for a trainer" each game hour.
   **Drill** (`TrainingDrills`): from the check at which a trainer and its animal pair up, every 10 s the trainer turns to face the animal
-  (`CharacterHot.Yaw`, each serial step while it plays) and plays Kenshi Races' `kr_cartographer` clip (2.97 s) once as a mod combat move,
-  looping while both stay on the post. Kenshi Races is an optional dependency (`meitou.json`, locked in `meitou.lock.json`); without it
-  the trainer only turns. Not saved: after a load the drill starts again. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
+  (`CharacterHot.Yaw`, each serial step while it plays) and plays the clip `husbandry_training_drill` (2.97 s) once as a mod combat move
+  (COMBAT_TECHNIQUE `40-`, `ThrowData.DrillTechnique`), looping while both stay on the post. The clip is Meshy's Cartographer as Kenshi
+  Races' library retargeted it, copied into Husbandry's own animation files (Data file); Husbandry does not depend on Kenshi Races. Not saved:
+  after a load the drill starts again. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
   `husbandry.handling`, people start at 1) rising in a line to 0.8 at 50 or more: about two game days, or half a day, from 0 to 10. The
   trainer gains 0.5 Animal Handling a game hour. **Treats** (`Treats`): at each game hour mark the trainer feeds one Raw Meat, from its own
   inventory (and backpack) first, else from the nearest finished storage of the player's within 300 units of the post; with none at hand the
@@ -191,7 +192,7 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
   (flesh − stun + rig, stun first) and blood come up to 1, just enough that it stands and fights; the capsule is kept. Where it lands a pink
   mist rises for 3 s (the same particle system tinted, drawn by `CapsuleUi` from the landings the system queues). The throw plays the clip
   `husbandry_capsule_throw` (a disabled COMBAT_TECHNIQUE, so no fight picks it, played as a mod combat move; `ThrowData`) from
-  `items/animations/husbandry_throw_male.skeleton` / `_female.skeleton`, an ANIMATION_FILE the data phase links to every race whose `male mesh`
+  `items/animations/husbandry_anims_male.skeleton` / `_female.skeleton`, an ANIMATION_FILE the data phase links to every race whose `male mesh`
   is under `data/character/meshes/` (humans, shek, hivers, skeletons, fishmen: male_skeleton / female_skeleton bodies; not the Hive Queen).
   The clip is Meshy's Ball_throw retargeted onto both skeletons with the Motion Lab (Meitou-Modding-Ecosystem/PZAKenshiMotionLab,
   `rig --reference`, then `motionlab.kenshi_export`), cut to 0.5-2.2 s of the source, played in place and turned so the hand lets go straight
@@ -270,7 +271,7 @@ a load adopts its platoon's animal again.
 
 Record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`, without its cage
 function, category HUSBANDRY), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1 actions, 19 his
-shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 its ANIMATION_FILE (linked into the humanoid races' `animation files`), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality, 39 the Filled Beast Capsule. Every building (post, training buildings, bench) is in the build menu category
+shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 the ANIMATION_FILE of both clips (linked into the humanoid races' `animation files`; files `items/animations/husbandry_anims_male.skeleton` / `_female.skeleton`: the game's skeleton bones, then the throw clip, then the drill clip copied byte for byte from Kenshi Races' library with its name changed), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality, 39 the Filled Beast Capsule, 40 the trainer's drill COMBAT_TECHNIQUE. Every building (post, training buildings, bench) is in the build menu category
 HUSBANDRY (`HusbandryData.Category`; the menu lists a category's name as written). The entry adds them
 in the data phase (`IModDataPhase.EditData`, engine docs/modding.md "Data phase") from the merged game data as it loads (`HusbandryData.Build`),
 so they follow the player's own game and mods and need no install at build time. The shipped `Husbandry.mod` is empty (release
