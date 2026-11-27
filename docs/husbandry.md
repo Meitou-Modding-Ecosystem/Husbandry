@@ -248,6 +248,8 @@ Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mo
 
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
 - **Husbandry: capsules**: each animal kept in a Beast Capsule.
+- **Husbandry: training drills**: whether the trainer's drill clip loaded (the log says so at start too), then each trainer and animal pair
+  and whether it is drilling or resting.
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
   settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first

@@ -36,6 +36,16 @@ public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds)
     volatile FrozenDictionary<CharacterId, long> _since = FrozenDictionary<CharacterId, long>.Empty;
 
     /// <summary>
+    /// The debug row's view (<see cref="View"/>), written at each check.
+    /// </summary>
+    volatile string _view = "No training drills yet.";
+
+    /// <summary>
+    /// The debug row's view: whether the drill clip loaded, then each pair and where it is in its drill.
+    /// </summary>
+    public string View => _view;
+
+    /// <summary>
     /// The pairs of this check: a trainer that keeps its animal keeps its rhythm, a new pair starts now, a pair no longer training ends.
     /// </summary>
     public void Pair(World world, IReadOnlyList<Lesson> lessons)
@@ -54,6 +64,31 @@ public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds)
         _drills.Clear();
         foreach (var (trainer, drill) in pairs) _drills[trainer] = drill;
         _since = _drills.ToFrozenDictionary(d => d.Key, d => d.Value.Since);
+        _view = Describe(world);
+    }
+
+    /// <summary>
+    /// The debug view: the clip, then per pair the trainer, the animal and the drill's progress (or "resting").
+    /// </summary>
+    string Describe(World world)
+    {
+        var table = world.Characters;
+        var text = new System.Text.StringBuilder(move is null
+            ? "Drill clip MISSING (no COMBAT_TECHNIQUE " + Capsules.ThrowData.DrillTechnique + "): trainers only turn.\n"
+            : "Drill clip " + move.StringId + " (" + clipSeconds.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " s).\n");
+        if (_drills.Count == 0) text.Append("No trainer is paired with an animal.");
+
+        foreach (var (trainer, drill) in _drills)
+        {
+            string who = table.TryResolveNext(trainer, out int t) ? table.Cold(t)?.Name ?? "?" : "gone";
+            string animal = table.TryResolveNext(drill.Animal, out int a) ? table.Cold(a)?.Name ?? "?" : "gone";
+            string state = Progress(drill.Since, world.Tick, world.TickSeconds, clipSeconds) is { } p
+                ? "drilling " + (p * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%"
+                : "resting";
+            text.AppendLine(who + " trains " + animal + ": " + state);
+        }
+
+        return text.ToString();
     }
 
     /// <summary>
