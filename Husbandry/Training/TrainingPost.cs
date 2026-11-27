@@ -37,7 +37,7 @@ public static class TrainingPost
     /// an animal without a trainer says so. Returns the animals that trained or waited.
     /// </summary>
     public static List<Lesson> Run(World world, AnimalRegistry registry, AnimalSettings pens, RngPurpose purpose, double hours, string meat,
-        Dictionary<string, CharacterId> pupils)
+        Dictionary<string, CharacterId> pupils, Trainers trainers)
     {
         var table = world.Characters;
         var holders = Learners(world, registry);
@@ -45,7 +45,7 @@ public static class TrainingPost
 
         var lessons = new List<Lesson>();
         bool hourMark = Math.Floor(world.GameHours) > Math.Floor(world.GameHours - hours);
-        var trainers = Trainers.Working(world);
+        var working = Trainers.Working(world);
         foreach (var (w, skill) in holders)
         {
             if (pupils[w.Site.Id] != table.IdOf(w.Slot))
@@ -57,9 +57,9 @@ public static class TrainingPost
             Pens.Keep(world, w.AsHitched, pens, purpose);
             if (Hitches.Down(w.Cold) || w.Cold.InCombat) continue;
 
-            int trainer = trainers.TryGetValue(w.Site.Id, out var free) && free.TryDequeue(out int t) ? t : -1;
+            int trainer = working.TryGetValue(w.Site.Id, out var free) && free.TryDequeue(out int t) ? t : -1;
             lessons.Add(new Lesson(w, skill, trainer));
-            if (trainer >= 0) Train(world, w, skill, trainer, hours, hourMark, meat);
+            if (trainer >= 0) Train(world, trainers, w, skill, trainer, hours, hourMark, meat);
             else if (hourMark) AnimalWork.Say(world, w.Slot, "Waiting for a trainer");
         }
 
@@ -114,19 +114,23 @@ public static class TrainingPost
     }
 
     /// <summary>
-    /// Trains the animal from the trainer for the hours, and the trainer's Animal Handling with it; at an hour mark the trainer feeds a treat, or
-    /// says it has none.
+    /// Trains the animal from the trainer for the hours, and the trainer's Animal Handling with it; at an hour mark the trainer feeds a treat from
+    /// the post and, once the post has none left, goes to fetch more (<see cref="Trainers.Fetch"/>) or says none is near.
     /// </summary>
-    static void Train(World world, Worker w, TrainableSkill skill, int trainer, double hours, bool hourMark, string meat)
+    static void Train(World world, Trainers trainers, Worker w, TrainableSkill skill, int trainer, double hours, bool hourMark, string meat)
     {
         var cold = world.Characters.Cold(trainer)!;
-        bool treats = Treats.Have(world, trainer, w.Site, meat);
+        bool treats = Treats.Have(world, w.Site, meat);
         float rate = Trainers.Rate(cold) * (treats ? 1 : Treats.Without);
         AnimalSkills.Gain(w.Cold, skill.Skill, rate * (float)hours);
         AnimalSkills.Gain(cold, Trainers.Handling, Trainers.HandlingPerHour * (float)hours);
         if (!hourMark) return;
 
-        if (!Treats.Feed(world, trainer, w.Site, meat)) AnimalWork.Say(world, trainer, "No Raw Meat for treats: training at half speed");
+        Treats.Feed(world, w.Site, meat);
+        if (Treats.Have(world, w.Site, meat)) return;
+
+        if (trainers.Fetch(world, trainer, w.Site)) AnimalWork.Say(world, trainer, "Fetching Raw Meat for treats");
+        else AnimalWork.Say(world, trainer, "No Raw Meat for treats nearby: training at half speed");
     }
 
     /// <summary>

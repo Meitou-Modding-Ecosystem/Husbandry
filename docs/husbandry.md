@@ -95,7 +95,7 @@ kept in a pen behind the bar, and every animal pack.
 Animals learn six skills, each a mod skill in the stats window (`husbandry.fetch`, `.guard`, `.hunt`, `.scout`, `.pack`, `.tieup`; labels
 "Beast: ..."), 0 until trained. A skill is **unlocked at 10**; below that the animal refuses the work that needs it (the job comes off with a
 floating "Needs Fetch 10" line). Skills train on the game's curve (`ModSkill.Gain`), are saved and hashed by the engine with the character.
-The **Animal Husbandry** research also unlocks the three buildings: Training Post `30-Husbandry.mod` (no function), Pet Station `31-` (no
+The **Animal Husbandry** research also unlocks the three buildings: Training Post `30-Husbandry.mod` (a storage for 20 Raw Meat, functionality `41-`), Pet Station `31-` (no
 function), Bone Pile `32-` (a Raw Meat machine, below). Each wears its own model when the deployed data has it, else a game building's (the stand-in):
 Training Post on Training Dummy, else Prisoner Pole; Pet Station on Bedroll, else Prisoner Pole; Bone Pile on Wooden Barrel, else Storage:
 General. Build cost always comes from the stand-in (`TrainingData`). Checked once a game second; a job on a building
@@ -127,9 +127,12 @@ small pieces across the atlas, and 2048 blurs it. Concept art: `concept-art/post
   Races' library retargeted it, copied into Husbandry's own animation files (Data file); Husbandry does not depend on Kenshi Races. Not saved:
   after a load the drill starts again. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
   `husbandry.handling`, people start at 1) rising in a line to 0.8 at 50 or more: about two game days, or half a day, from 0 to 10. The
-  trainer gains 0.5 Animal Handling a game hour. **Treats** (`Treats`): at each game hour mark the trainer feeds one Raw Meat, from its own
-  inventory (and backpack) first, else from the nearest finished storage of the player's within 300 units of the post; with none at hand the
-  animal learns at half rate and the trainer floats "No Raw Meat for treats".
+  trainer gains 0.5 Animal Handling a game hour. **Treats** (`Treats`): Raw Meat kept in the post's own storage (Raw Meat only, one stack of 20,
+  `TrainingData.PostMeat`). At each game hour mark the trainer feeds one from it; once the post is empty it walks to the nearest finished
+  storage of the player's within 3000 units (300 m) of the post that holds Raw Meat, takes as much as the post has room for (less what it already
+  carries), walks back and puts it in the post, floating "Fetching Raw Meat for treats". With none near, it floats "No Raw Meat for treats
+  nearby: training at half speed" and keeps training. While the post has no treat the animal learns at half rate; while the trainer is away it
+  waits.
 - **Fetch** (job 4520 "Fetching", offered on every storage building of the merged data as **Fetch for here**): an idle animal free of the
   player's orders carries the output of the player's finished machines within 3000 units of the storage that the storage takes, nearest machine
   first, into the storage. It carries in its pack only (a live animal's main grid takes nothing, engine `Inventory.Add` `mainShut`), so without a
@@ -273,7 +276,7 @@ a load adopts its platoon's animal again.
 
 Record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`, without its cage
 function, category HUSBANDRY), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1 actions, 19 his
-shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 the ANIMATION_FILE of both clips (linked into the humanoid races' `animation files`; files `items/animations/husbandry_anims_male.skeleton` / `_female.skeleton`: the game's skeleton bones, then the throw clip, then the drill clip copied byte for byte from Kenshi Races' library with its name changed), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality, 39 the Filled Beast Capsule, 40 the trainer's drill COMBAT_TECHNIQUE. Every building (post, training buildings, bench) is in the build menu category
+shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 the ANIMATION_FILE of both clips (linked into the humanoid races' `animation files`; files `items/animations/husbandry_anims_male.skeleton` / `_female.skeleton`: the game's skeleton bones, then the throw clip, then the drill clip copied byte for byte from Kenshi Races' library with its name changed), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality, 39 the Filled Beast Capsule, 40 the trainer's drill COMBAT_TECHNIQUE, 41 the Training Post's storage functionality (function 2, `limit inventory` Raw Meat, `stackable bonus mult` so one stack holds 20). Every building (post, training buildings, bench) is in the build menu category
 HUSBANDRY (`HusbandryData.Category`; the menu lists a category's name as written). The entry adds them
 in the data phase (`IModDataPhase.EditData`, engine docs/modding.md "Data phase") from the merged game data as it loads (`HusbandryData.Build`),
 so they follow the player's own game and mods and need no install at build time. The shipped `Husbandry.mod` is empty (release
