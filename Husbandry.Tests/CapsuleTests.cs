@@ -16,9 +16,9 @@ public sealed class CapsuleTests
     /// <summary>
     /// A beast as a test keeps it.
     /// </summary>
-    static StoredBeast Beast(IReadOnlyList<(string, float)>? traits = null) => new("12-gamedata.base", "Gorillo", 0.8f, "Grumble", true,
-        [((int)StatsEnumerated.Strength, 45.5f), ((int)StatsEnumerated.MeleeAttack, 30)], [("husbandry.guard", 12), ("husbandry.hunt", 0.4f)],
-        traits ?? []);
+    static StoredBeast Beast(IReadOnlyList<(string, float)>? traits = null, IReadOnlyList<(string, string)>? tags = null) => new("12-gamedata.base",
+        "Gorillo", 0.8f, "Grumble", true, [((int)StatsEnumerated.Strength, 45.5f), ((int)StatsEnumerated.MeleeAttack, 30)],
+        [("husbandry.guard", 12), ("husbandry.hunt", 0.4f)], traits ?? [], tags ?? []);
 
     [Fact]
     public void A_capsule_summons_then_recalls_and_does_nothing_again_until_it_has_settled()
@@ -69,23 +69,110 @@ public sealed class CapsuleTests
     }
 
     [Fact]
-    public void A_beast_keeps_its_kind_and_traits_through_a_save()
+    public void A_beast_keeps_its_kind_traits_and_mod_tags_through_a_save()
     {
-        var beast = Beast([("husbandry.rare", 1.5f)]);
+        var beast = Beast([("husbandry.rare", 1.5f)], [("other.mod", "rival|7")]);
         using var stream = new MemoryStream();
         using (var w = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true)) beast.Write(w);
 
         stream.Position = 0;
         using var r = new BinaryReader(stream);
-        var read = StoredBeast.Read(r, 6);
+        var read = StoredBeast.Read(r, HusbandrySystem.SaveVersion);
 
+        Assert.Equal(stream.Length, stream.Position);
         Assert.Equal("Gorillo", read.Kind);
         Assert.Equal("Grumble", read.Name);
         Assert.True(read.Female);
         Assert.Equal(45.5f, read.Stat(StatsEnumerated.Strength));
         Assert.Equal(new[] { ("husbandry.rare", 1.5f) }, read.Traits);
         Assert.Equal(beast.Skills, read.Skills);
+        Assert.Equal(new[] { ("other.mod", "rival|7") }, read.Tags);
     }
+
+    /// <summary>
+    /// A version 6 beast (written before mod tags were kept) reads with its traits and no tags, to the end of its bytes.
+    /// </summary>
+    [Fact]
+    public void A_version_6_beast_reads_without_mod_tags()
+    {
+        using var stream = new MemoryStream();
+        using (var w = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true)) Beast([("husbandry.rare", 2)]).Write(w);
+
+        stream.SetLength(stream.Length - sizeof(int));
+        stream.Position = 0;
+        using var r = new BinaryReader(stream);
+        var read = StoredBeast.Read(r, 6);
+
+        Assert.Equal(stream.Length, stream.Position);
+        Assert.Equal(new[] { ("husbandry.rare", 2f) }, read.Traits);
+        Assert.Empty(read.Tags);
+    }
+
+    /// <summary>
+    /// Keeping a beast reads its traits from the traits tag and keeps every other mod's tag as it is. Catches traits lost on recall, or the traits
+    /// tag kept twice (as a tag and as traits).
+    /// </summary>
+    [Fact]
+    public void Keeping_a_beast_splits_its_traits_from_other_mods_tags()
+    {
+        var tags = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            [BeastTraits.TagMod] = "husbandry.rare=1.5;other.swift=2",
+            ["other.mod"] = "rival|7",
+        };
+
+        var beast = StoredBeast.Of(new CharacterCold { Name = "Grumble" }, true, tags);
+
+        Assert.Equal(new[] { ("husbandry.rare", 1.5f), ("other.swift", 2f) }, beast.Traits);
+        Assert.Equal(new[] { ("other.mod", "rival|7") }, beast.Tags);
+    }
+
+    /// <summary>
+    /// The traits tag reads back what it wrote, in id order, and skips an entry that does not read.
+    /// </summary>
+    [Fact]
+    public void The_traits_tag_round_trips_and_skips_bad_entries()
+    {
+        string tag = BeastTraits.Encode(new[] { ("z.last", -0.25f), ("a.first", 3f) });
+
+        Assert.Equal("a.first=3;z.last=-0.25", tag);
+        Assert.Equal(new[] { ("a.first", 3f), ("z.last", -0.25f) }, BeastTraits.Decode(tag));
+        Assert.Equal(new[] { ("ok", 1f) }, BeastTraits.Decode("ok=1;=2;broken;bad=x"));
+        Assert.Empty(BeastTraits.Decode(null));
+        Assert.Throws<ArgumentException>(() => BeastTraits.Register(new BeastTrait("bad=id", "Bad")));
+    }
+
+    /// <summary>
+    /// In a world: a trait another mod gives a living animal, and another mod's tag on it, go into the capsule with it (off the old body) and
+    /// come back on the new body a summon makes. Catches stat gains or mod data lost between capsule trips.
+    /// </summary>
+    [Fact]
+    public void Traits_and_mod_tags_go_into_the_capsule_and_back_onto_the_new_body()
+    {
+        using var world = new World(new WorldSettings { Seed = 3, Threads = 1, PublishSnapshots = false }, new OpenGroundWalkability((_, _) => 0), []);
+        var animal = Spawn(world, "Grumble");
+        Assert.True(BeastTraits.Set(world, animal, "other.swift", 2));
+        Assert.True(world.CharacterTags.Set(animal, "other.mod", "rival|7"));
+
+        var cold = world.Characters.Cold(animal.Slot)!;
+        var beast = StoredBeast.Take(world, animal, cold, true);
+
+        Assert.Empty(world.CharacterTags.Of(animal));
+        var body = Spawn(world, "new body");
+        beast.Restore(world, body, world.Characters.Cold(body.Slot)!);
+
+        Assert.Equal("Grumble", world.Characters.Cold(body.Slot)!.Name);
+        Assert.Equal(2f, BeastTraits.Get(world, body, "other.swift"));
+        Assert.Equal("rival|7", world.CharacterTags.Get(body, "other.mod"));
+        Assert.True(BeastTraits.Set(world, body, "other.swift", null));
+        Assert.Null(BeastTraits.Get(world, body, "other.swift"));
+    }
+
+    /// <summary>
+    /// A character added to <paramref name="world"/>.
+    /// </summary>
+    static CharacterId Spawn(World world, string name) =>
+        world.Characters.Spawn(new CharacterHot { Position = new Vector3(1000, 150, 1000) }, new CharacterCold { Name = name }, world.Tick);
 
     [Fact]
     public void An_older_save_beast_reads_without_kind_or_traits()

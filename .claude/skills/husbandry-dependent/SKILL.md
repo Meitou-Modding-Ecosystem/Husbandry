@@ -19,7 +19,7 @@ teaches; it never copies or replaces either. Read `docs/depending-on-husbandry.m
 
 ## Steps
 
-1. **Manifest**: `apiVersion` 3 and `"dependencies": [{ "id": "husbandry", "version": ">=0.8.0 <0.9.0" }]` (match the current
+1. **Manifest**: `apiVersion` 3 and `"dependencies": [{ "id": "husbandry", "version": ">=0.10.0 <0.11.0" }]` (match the current
    `Husbandry/meitou.json` minor), plus `animal.behaviors` when you register animals. Tell the user Husbandry must load above the mod in `mods.cfg`.
 2. **Project**: add the `animal.behaviors` and `husbandry` entries to `meitou.lock.json` from the release notes of `husbandry-v<version>` (tag, asset, SHA-256,
    folder `Husbandry`, engine commit), and move `engine/` to that commit.
@@ -28,6 +28,9 @@ teaches; it never copies or replaces either. Read `docs/depending-on-husbandry.m
 4. **Skills**: `AddSkill(new ModSkill(id, "Beast: X", column) { Description, Start = 0 }, (TaskType)n, races)`; Husbandry registers the skill,
    the "Training X" job and the "Train: X" offer under your mod. Write the skill's effect in your own `AddSystem` system: read it with
    `AnimalSkills.Has` / `Level`, train it by use with `AnimalSkills.Gain`.
-5. **Docs**: list the mod's kinds and skills in its own docs; a change to Husbandry's API updates `docs/depending-on-husbandry.md`,
+5. **Traits and data**: `BeastTraits.Register(new BeastTrait("<mod>.<trait>", label))` in `Initialize`; `BeastTraits.Set(world, animal, id,
+   value)` / `Get` / `Of` in a serial step. Keep any other per-animal data in a character tag (`world.CharacterTags.Set(animal, c.Id, tag)`):
+   capsules carry tags, traits, stats and mod skills to the new body a summon makes; anything kept by `CharacterId` or lasting id is lost.
+6. **Docs**: list the mod's kinds and skills in its own docs; a change to Husbandry's API updates `docs/depending-on-husbandry.md`,
    `docs/husbandry.md` and this skill, and bumps Husbandry's minor version.
-6. **Check**: `dotnet build`, `dotnet test`; in game F10 **Animal Behaviors: supported animals**, and the Training Post's menu shows "Train: X".
+7. **Check**: `dotnet build`, `dotnet test`; in game F10 **Animal Behaviors: supported animals**, and the Training Post's menu shows "Train: X".

@@ -73,6 +73,13 @@ public void Initialize(ModContext c)
 - What the skill does is your code: read it in your own system with `AnimalSkills.Level(cold, skill)` / `AnimalSkills.Has(cold, skill)`
   (unlocked at `AnimalSkills.Unlocked`, 10), train it by use with `AnimalSkills.Gain`. Your own work jobs can use Husbandry's buildings
   (`HusbandryData.TrainingPost`, `PetStation`, `BonePile`) and helpers (`Training.AnimalWork.Holders`, `Free`, `Walk`, `Say`, `Refused`).
+- **Traits** (from 0.10.0): `BeastTraits.Register(new BeastTrait("mymod.swift", "Swift"))` in `Initialize` names a trait for the capsule
+  tooltip (`Format` is how its value reads, `+0.#;-0.#` by default; the label goes through Husbandry's catalogs, so give your own
+  translation or use plain text). `BeastTraits.Set(world, animal, "mymod.swift", 1.5f)` gives an animal a trait (null takes it away),
+  `Get` / `Of` read them; serial phases only. Ids are yours: prefix them with your mod id; no `=` or `;`.
+- **Your own data on an animal**: keep it in a character tag (`world.CharacterTags.Set(animal, c.Id, tag)`, engine docs "Character tags").
+  A Beast Capsule carries every mod's tag, its traits, its stats and every registered `ModSkill` level through a recall and summon, though
+  the summon makes a new body with a new `CharacterId` and lasting id; data you keep by id elsewhere is lost on the trip.
 - **Reading**: `Skills`; what an animal supports is Animal Behaviors' `SupportOf(race)`.
 - Registrations only in `Initialize`; later ones throw. When your `Initialize` throws, Husbandry drops what you registered
   (`IModDependents`).

@@ -191,16 +191,22 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
   ahead. A throw also ends with a line over the thrower when the beast gets up, is carried or leaves, the thrower is down or has no empty
   capsule left, or after 2 minutes. Throws in progress are not saved.
 - **Summon and recall**: a filled capsule stays bound to its beast. Right-click it while the beast is inside: the beast comes out 15 units
-  from the character as a new member of the character's squad (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod
-  skill levels, fully healed, and the capsule keeps its body's lasting id (`LastingIds`). Right-click it while the beast is out and within
-  300 units (30 m): the beast goes back in with its stats and skills as they are now (what it carried drops). A beast that died or is gone
+  from the character as a new member of the character's squad (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats (every
+  stat with storage), every registered mod skill's level (any mod's), its traits and every mod's character tag (`CharacterTags`), fully healed,
+  and the capsule keeps its body's lasting id (`LastingIds`). Right-click it while the beast is out and within 300 units (30 m): the beast goes
+  back in with all of that as it is now, so gains made while out are kept (what it carried drops). Going in takes every tag off the old body
+  (`StoredBeast.Take`), so no mod finds a body that is in a capsule; the summon puts them on the new body (`StoredBeast.Restore`). A mod that
+  keeps its own data on an animal keeps it in a character tag, which travels with it. A beast that died or is gone
   for good leaves the capsule unbound, and its next click turns it into an empty capsule. A capsule acts at most once a second
   (`CapsuleSystem.SettleTicks`, 30 ticks): a click before then, or any further click while paused, says "Wait a moment" and does nothing.
   No room in the squad or the faction: the beast stays in. The click acts at once, in the item use's serial step.
 - **Tooltip**: a filled capsule's tooltip (`CapsuleTooltip`, engine item tooltip lines) shows what it contains (name and kind), sex and age
   (adult from 0.6), whether the beast is in or out, Str, Tough, Dex, Atk, Def and Ath, the mod skills trained to 1 or more and its traits.
-- **Beast traits**: a capsule's beast keeps a list of traits (`StoredBeast.Traits`: id and value), saved with it and kept while it is out.
-  `BeastTraits.Register(new BeastTrait(id, label, format))` names one for the tooltip; nothing gives traits yet (rare catches, breeding and
+- **Beast traits**: unique qualities beyond a race's stats (id and value). A living animal's traits are its character tag `husbandry.traits`
+  (`BeastTraits.TagMod`: `id=value;id=value`, ids in ordinal order, values invariant round-trip floats), so any mod reads and changes them
+  on any animal with `BeastTraits.Of`, `Get` and `Set` (serial phases), and they are saved with the character. In a capsule they are
+  `StoredBeast.Traits`, saved with it and shown in its tooltip. `BeastTraits.Register(new BeastTrait(id, label, format))` names one for the
+  tooltip (an id holds no `=` or `;`); an unregistered one shows by its id. Nothing in Husbandry gives traits yet (rare catches, breeding and
   specialised training will).
 - A filled capsule's `ModTag` is `husbandry.capsule:<key>`; the beasts are kept by key in the sidecar. An older save's full capsule (the empty
   record with a key) still works, and becomes a Filled Beast Capsule at its first click. Debug row **Husbandry: capsules** lists them.
@@ -246,8 +252,8 @@ Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mo
 
 The sidecar holds each paired female's next try (game hours), the Beastmaster's six stock places (portrait serial, refill hour) and each
 settlement Beastmaster (settlement number, name, its six places) and the beasts bound to Beast Capsules (next key; key, record, kind, age, name, sex,
-stored stats, mod skill levels, traits, the lasting id of its body while out), version 6 (version 4 and 5 capsules have no kind or traits
-and are all inside). Versions 1 to 4 also held the hitches (portrait serial, post id) and the set sexes (from version
+stored stats, mod skill levels, traits, every other mod's character tag, the lasting id of its body while out), version 7 (version 6 capsules
+have no tags; version 4 and 5 capsules have no kind, traits or tags and are all inside). Versions 1 to 4 also held the hitches (portrait serial, post id) and the set sexes (from version
 2); loading one hands them to Animal Behaviors, which saves them from then on. A version 3 sidecar loads with no capsule animals, a version 2
 with no settlement Beastmasters either, a version 1 with none of the last four. All of it is in the world's state hash. A stock platoon is
 found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not found after

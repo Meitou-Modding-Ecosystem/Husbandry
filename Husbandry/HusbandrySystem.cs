@@ -302,7 +302,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// The sidecar layout's version. Version 5 moved the hitches and the set sexes to Animal Behaviors' sidecar; an older save's are handed to it.
     /// Version 6 binds each capsule to its beast (its kind, traits and whether it is out).
     /// </summary>
-    public const int SaveVersion = 6;
+    public const int SaveVersion = 7;
 
     public void Write(Stream stream)
     {
