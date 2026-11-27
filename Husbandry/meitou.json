@@ -1,6 +1,6 @@
 {
   "id": "husbandry",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "apiVersion": 3,
   "gameVersion": ">=0.24.0",
   "dependencies": [

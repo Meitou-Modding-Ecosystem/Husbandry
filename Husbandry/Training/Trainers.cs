@@ -16,9 +16,10 @@ namespace Husbandry.Training;
 /// The Training Post's trainers (docs/husbandry.md "Training"): a person given the post's Train animals job walks to the front of the post and
 /// works there while an animal of the player's holds a training job on it, one trainer a post; an animal learns only from a working trainer, at
 /// a rate set by the trainer's Animal Handling (<see cref="Rate"/>). The job's contributor to the chooser (<see cref="IJobSource"/>) and the serial
-/// step that turns an arrived walk into work. Nothing of its own is saved: the engine saves the job, and a loaded trainer walks to the post again.
+/// step that turns an arrived walk into work. The trainer keeps the post's treats stocked (<see cref="Fetch"/>), Raw Meat by the record id
+/// <paramref name="meat"/> gives. Nothing of its own is saved: the engine saves the job, and a loaded trainer walks to the post again.
 /// </summary>
-public sealed class Trainers(AnimalRegistry registry) : IJobSource
+public sealed class Trainers(AnimalRegistry registry, Func<string> meat) : IJobSource
 {
     #region Job
 
@@ -122,7 +123,8 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
     #region Stepping
 
     /// <summary>
-    /// The serial step: a trainer whose walk to the post has ended works there, or stands and chooses again when the walk ended short.
+    /// The serial step: a trainer whose walk to the post has ended works there, or stands and chooses again when the walk ended short; one whose
+    /// walk to a storage has ended takes Raw Meat there and walks back (<see cref="Restock"/>).
     /// </summary>
     public void Step(World world)
     {
@@ -131,6 +133,12 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
         {
             if (!table.Next[s].Alive || table.Cold(s) is not { Running: { Source: TaskSource.Job, Row: Type, Task: CharacterTask.GoTo } run } cold) continue;
             if ((CharacterTask)table.Next[s].Task == CharacterTask.GoTo || run.Site is not { } id || world.Buildings.Find(id) is not { } post) continue;
+
+            if (post.Record != HusbandryData.TrainingPost)
+            {
+                Restock(world, s, run.Job, post);
+                continue;
+            }
 
             if (At(world, s, post))
             {
@@ -175,10 +183,72 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
     }
 
     /// <summary>
-    /// Sets the character working at the post on job <paramref name="k"/>'s row.
+    /// Sets the character working at the post on job <paramref name="k"/>'s row, first putting the Raw Meat it carries into the post's storage.
     /// </summary>
-    static void Work(World world, int slot, int k, BuildSite post) =>
+    void Work(World world, int slot, int k, BuildSite post)
+    {
+        Stock(world, slot, post);
         TaskStart.Start(world, slot, new TaskRequest(CharacterTask.Idle, Type, TaskSource.Job) { Site = post.Id, Job = k });
+    }
+
+    #endregion
+
+    #region Treats
+
+    /// <summary>
+    /// How near a storage the trainer must have got to take Raw Meat from it, in game units.
+    /// </summary>
+    public const float StorageReach = 150;
+
+    /// <summary>
+    /// Sends a trainer working its post to the nearest storage of the player's holding Raw Meat (<see cref="Treats.Source"/>) when the post has
+    /// room for more; false when none is near enough or the post is full.
+    /// </summary>
+    public bool Fetch(World world, int slot, BuildSite post)
+    {
+        string id = meat();
+        if (Treats.Room(world, post, id) <= 0 || Treats.Source(world, post, id) is not { } source) return false;
+        if (world.Characters.Cold(slot)?.Running is not { Source: TaskSource.Job, Row: Type } run) return false;
+
+        var point = MovementSystem.FloorApproach(world, source.Position);
+        TaskStart.Start(world, slot, new TaskRequest(CharacterTask.GoTo, Type, TaskSource.Job) { Point = point, Site = source.Site, Job = run.Job });
+        return true;
+    }
+
+    /// <summary>
+    /// A trainer at the end of its walk to a storage: takes as much Raw Meat as the post has room for (<see cref="Treats.Room"/>) when it got near,
+    /// and walks back to the post (or stands and chooses again when its job is gone).
+    /// </summary>
+    void Restock(World world, int slot, int k, BuildSite storage)
+    {
+        var cold = world.Characters.Cold(slot)!;
+        if (PostOf(world, slot, k) is not { } post)
+        {
+            TaskStart.Stand(world.Characters, slot);
+            DecisionSystem.Request(cold);
+            return;
+        }
+
+        bool near = AnimalWork.Away(world, slot, storage.Position) <= StorageReach;
+        if (near && world.Machines.Find(storage.Id)?.Storage is { } from && cold.Inventory is { } bag)
+        {
+            string id = meat();
+            if (Treats.Move(from, bag, id, Treats.Room(world, post, id) - Treats.Count(bag, id)) > 0) world.Machines.Touch();
+        }
+
+        Start(world, slot, k);
+    }
+
+    /// <summary>
+    /// Puts the Raw Meat the trainer carries into the post's storage, as much as it has room for.
+    /// </summary>
+    void Stock(World world, int slot, BuildSite post)
+    {
+        string id = meat();
+        if (id.Length == 0 || world.Characters.Cold(slot)?.Inventory is not { } bag || Treats.Store(world, post) is not { } store) return;
+
+        if (Treats.Move(bag, store, id, Treats.Room(world, post, id)) > 0) world.Machines.Touch();
+    }
 
     #endregion
 
@@ -217,7 +287,7 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
     }
 
     /// <summary>
-    /// Whether another living character walks to the post on this job or works it: a post takes one trainer.
+    /// Whether another living character walks to the post on this job, works it or fetches treats for it: a post takes one trainer.
     /// </summary>
     static bool Taken(World world, int slot, BuildSite post)
     {
@@ -225,7 +295,8 @@ public sealed class Trainers(AnimalRegistry registry) : IJobSource
         for (int s = 0; s < table.HighWater; s++)
         {
             if (s == slot || !table.Next[s].Alive || table.Cold(s) is not { DiedTick: < 0 } cold) continue;
-            if (cold.Running is { Source: TaskSource.Job, Row: Type, Site: { } id } && id == post.Id) return true;
+            if (cold.Running is not { Source: TaskSource.Job, Row: Type } run) continue;
+            if (run.Site == post.Id || (uint)run.Job < (uint)cold.Jobs.Count && cold.Jobs[run.Job].Site == post.Id) return true;
         }
 
         return false;

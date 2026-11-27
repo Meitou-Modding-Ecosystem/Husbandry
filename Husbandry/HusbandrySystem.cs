@@ -171,7 +171,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _fetching = new Fetching(_population);
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
-        _trainers = new Trainers(registry);
+        _trainers = new Trainers(registry, () => _hunting.MeatId);
         _drills = new TrainingDrills(drillMove, drillSeconds);
         _capsules = new CapsuleSystem(_population, _sexes, registry, log);
         _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove, purpose);
@@ -272,7 +272,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         double hours = double.IsNaN(_workedAt) ? 0 : Math.Max(0, world.GameHours - _workedAt);
         _workedAt = world.GameHours;
         var pens = _pens.Copy();
-        var lessons = TrainingPost.Run(world, _registry, pens, _purpose, hours, _hunting.MeatId, _pupils);
+        var lessons = TrainingPost.Run(world, _registry, pens, _purpose, hours, _hunting.MeatId, _pupils, _trainers);
         _drills.Pair(world, lessons);
         Guarding.Run(world, pens, _purpose, hours);
         _fetching.Run(world);
