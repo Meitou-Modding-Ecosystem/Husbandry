@@ -223,7 +223,6 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         var settings = _settings.Copy();
         _tieUp.Apply(world);
         _trainers.Step(world);
-        _capsules.Run(world);
         _throws.Run(world);
         if (world.Tick % TraderEveryTicks == 0) RunTraders(world, settings);
         if (world.Tick % TraderEveryTicks == 0) RunTraining(world, settings);
@@ -267,7 +266,11 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         Roster.Publish(world, _animals, _breeding, pens.PenRadius);
     }
 
-    public void HitResolved(World world, in CombatHit hit) => _tieUp.Observe(world, hit);
+    public void HitResolved(World world, in CombatHit hit)
+    {
+        _tieUp.Observe(world, hit);
+        _throws.Observe(hit);
+    }
 
     /// <summary>
     /// The debug view: each hitched animal with its post, race, sex, age, hunger and next try, then the latest tries.
@@ -297,8 +300,9 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
 
     /// <summary>
     /// The sidecar layout's version. Version 5 moved the hitches and the set sexes to Animal Behaviors' sidecar; an older save's are handed to it.
+    /// Version 6 binds each capsule to its beast (its kind, traits and whether it is out).
     /// </summary>
-    public const int SaveVersion = 5;
+    public const int SaveVersion = 6;
 
     public void Write(Stream stream)
     {
@@ -332,7 +336,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         if (version < 5) ReadSexes(r);
         _beastmaster.Read(r);
         if (version >= 3) _outposts.Read(r);
-        if (version >= 4) _capsules.Read(r);
+        if (version >= 4) _capsules.Read(r, version);
     }
 
     /// <summary>

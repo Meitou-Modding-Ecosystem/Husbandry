@@ -72,6 +72,11 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     const float MistSeconds = 3;
 
     /// <summary>
+    /// The thrown capsules' flights, drawn once a frame (none before <see cref="Initialize"/>).
+    /// </summary>
+    CapsuleFlights? _flights;
+
+    /// <summary>
     /// Adds the mod's records, built from the merged game data (docs/husbandry.md "Data file"). Throws, so the game leaves the mod out, when the
     /// game lacks a record they copy.
     /// </summary>
@@ -91,13 +96,16 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.Harmony.PatchAll(typeof(HusbandryMod).Assembly);
         AddTraining(c);
         c.AddItemUse(HusbandryData.Capsule, use => _latest?.Capsules.Use(use) ?? false);
+        c.AddItemUse(HusbandryData.FilledCapsule, use => _latest?.Capsules.Use(use) ?? false);
         _throwMove = c.Data.Find(ThrowData.Technique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
 #if MEITOU_BUILDING_ROWS
         c.AddUi(new StatusUi(() => _latest?.Status));
 #endif
         c.AddUi(new HitchingPostWindow(() => _latest?.Roster));
-        c.AddUi(new CapsuleUi(() => _latest?.Throws, at => c.PlayEffect(MistEffect, at, MistSeconds, MistTint)));
+        c.AddUi(new CapsuleUi(() => _latest?.Throws, () => _latest?.Capsules, at => c.PlayEffect(MistEffect, at, MistSeconds, MistTint)));
+        _flights = new CapsuleFlights(at => c.PlayEffect(MistEffect, at, CapsuleFlights.PuffSeconds, CapsuleFlights.Tint));
+        c.AddFrame(frame => _flights.Draw(frame, _latest?.Throws));
         c.AddSystem("husbandry", ctx => _latest = Build(c, ctx), SystemAnchor.End);
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));

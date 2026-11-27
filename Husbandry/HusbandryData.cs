@@ -39,6 +39,11 @@ public static class HusbandryData
     public const string Capsule = "33-" + FileName;
 
     /// <summary>
+    /// The filled Beast Capsule's record id (<see cref="Capsules.CapsuleData.Filled"/>): a capsule bound to the beast it holds.
+    /// </summary>
+    public const string FilledCapsule = "39-" + FileName;
+
+    /// <summary>
     /// The record number of the first stock SQUAD_TEMPLATE; one per kind of <see cref="Beastmaster.Kinds"/> follows in order.
     /// </summary>
     public const int FirstStockSquad = 20;
@@ -93,9 +98,10 @@ public static class HusbandryData
             Description = "Husbandry: hitching posts, breeding, animal training and the Beastmaster of Mourn. Generated; see docs/husbandry.md.",
         };
         var capsule = Capsules.CapsuleData.Build(game);
+        var filled = Capsules.CapsuleData.Filled(capsule);
         Capsules.BenchData.AddRecipe(game, capsule);
         file.Records.AddRange([ResearchRecord(), PostRecord(game, model), .. TraderData.Build(game), .. TrainingData.Build(game), capsule,
-            .. Capsules.ThrowData.Build(), .. Capsules.BenchData.Build(game)]);
+            .. Capsules.ThrowData.Build(), .. Capsules.BenchData.Build(game), filled]);
         for (int k = 0; k < file.Records.Count; k++) file.Records[k].Id = k + 1;
 
         file.NextId = file.Records.Count + 1;

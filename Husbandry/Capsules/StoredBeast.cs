@@ -5,16 +5,16 @@ using Meitou.Simulation.Bodies;
 namespace Husbandry.Capsules;
 
 /// <summary>
-/// An animal kept in a Beast Capsule: what is needed to make it again (<see cref="CapsuleSystem"/>): its record, age, name, sex, trained stats and
-/// mod skill levels.
+/// An animal bound to a Beast Capsule: what is needed to make it again (<see cref="CapsuleSystem"/>): its record, kind (its race's name), age, name,
+/// sex, trained stats, mod skill levels and its traits (<see cref="BeastTraits"/>), which stay with the capsule while the animal is out.
 /// </summary>
-public sealed record StoredBeast(string Record, float Age, string Name, bool Female, IReadOnlyList<(int Stat, float Value)> Stats,
-    IReadOnlyList<(string Skill, float Level)> Skills)
+public sealed record StoredBeast(string Record, string Kind, float Age, string Name, bool Female, IReadOnlyList<(int Stat, float Value)> Stats,
+    IReadOnlyList<(string Skill, float Level)> Skills, IReadOnlyList<(string Trait, float Value)> Traits)
 {
     /// <summary>
-    /// Keeps an animal: its stored stats (every number with storage) and its mod skills.
+    /// Keeps an animal: its stored stats (every number with storage), its mod skills and the traits it already had.
     /// </summary>
-    public static StoredBeast Of(CharacterCold cold, bool female)
+    public static StoredBeast Of(CharacterCold cold, bool female, IReadOnlyList<(string Trait, float Value)>? traits = null)
     {
         var stats = cold.Stats;
         var stored = stats is null
@@ -24,8 +24,13 @@ public sealed record StoredBeast(string Record, float Age, string Name, bool Fem
                 .Select(s => ((int)s, stats.Stored(s)))
                 .ToList();
         var skills = stats is null ? [] : ModSkills.All.Select(k => (k.Id, k.Level(stats))).ToList();
-        return new StoredBeast(cold.RecordId, cold.Age, cold.Name, female, stored, skills);
+        return new StoredBeast(cold.RecordId, cold.Race?.Name ?? "", cold.Age, cold.Name, female, stored, skills, traits ?? []);
     }
+
+    /// <summary>
+    /// A stored stat's value, 0 when it was not kept.
+    /// </summary>
+    public float Stat(StatsEnumerated stat) => Stats.FirstOrDefault(s => s.Stat == (int)stat).Value;
 
     /// <summary>
     /// Gives a new character the kept name, stats and skills.
@@ -42,12 +47,15 @@ public sealed record StoredBeast(string Record, float Age, string Name, bool Fem
         }
     }
 
+    #region Saving
+
     /// <summary>
-    /// Writes it.
+    /// Writes it (the layout of sidecar version 6).
     /// </summary>
     public void Write(BinaryWriter w)
     {
         w.Write(Record);
+        w.Write(Kind);
         w.Write(Age);
         w.Write(Name);
         w.Write(Female);
@@ -58,27 +66,43 @@ public sealed record StoredBeast(string Record, float Age, string Name, bool Fem
             w.Write(value);
         }
 
-        w.Write(Skills.Count);
-        foreach (var (id, level) in Skills)
-        {
-            w.Write(id);
-            w.Write(level);
-        }
+        WritePairs(w, Skills);
+        WritePairs(w, Traits);
     }
 
     /// <summary>
-    /// Reads one back.
+    /// Reads one back; a sidecar before version 6 has no kind and no traits.
     /// </summary>
-    public static StoredBeast Read(BinaryReader r)
+    public static StoredBeast Read(BinaryReader r, int version)
     {
         string record = r.ReadString();
+        string kind = version >= 6 ? r.ReadString() : "";
         float age = r.ReadSingle();
         string name = r.ReadString();
         bool female = r.ReadBoolean();
         var stats = Enumerable.Range(0, r.ReadInt32()).Select(_ => (r.ReadInt32(), r.ReadSingle())).ToList();
-        var skills = Enumerable.Range(0, r.ReadInt32()).Select(_ => (r.ReadString(), r.ReadSingle())).ToList();
-        return new StoredBeast(record, age, name, female, stats, skills);
+        var skills = ReadPairs(r);
+        var traits = version >= 6 ? ReadPairs(r) : [];
+        return new StoredBeast(record, kind, age, name, female, stats, skills, traits);
     }
+
+    /// <summary>
+    /// Writes a list of named numbers.
+    /// </summary>
+    static void WritePairs(BinaryWriter w, IReadOnlyList<(string Id, float Value)> pairs)
+    {
+        w.Write(pairs.Count);
+        foreach (var (id, value) in pairs)
+        {
+            w.Write(id);
+            w.Write(value);
+        }
+    }
+
+    /// <summary>
+    /// Reads a list of named numbers.
+    /// </summary>
+    static List<(string, float)> ReadPairs(BinaryReader r) => [.. Enumerable.Range(0, r.ReadInt32()).Select(_ => (r.ReadString(), r.ReadSingle()))];
 
     /// <summary>
     /// Adds it to the state hash.
@@ -93,5 +117,13 @@ public sealed record StoredBeast(string Record, float Age, string Name, bool Fem
             hasher.Add(stat);
             hasher.Add(value);
         }
+
+        foreach (var (trait, value) in Traits)
+        {
+            hasher.Add(Rng.StableHash(trait));
+            hasher.Add(value);
+        }
     }
+
+    #endregion
 }

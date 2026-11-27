@@ -149,8 +149,10 @@ Trips (fetch walks, hunts) are not saved: after a load a hunter starts resting a
 
 ## Beast Capsules
 
-ITEM `33-Husbandry.mod` **Beast Capsule** (500 cats, one inventory cell; a copy of the game's Fertiliser, else Leather or Hemp, for its
-weight and other fields). Its inventory icon is `Husbandry/items/icons/husbandry-beastcapsule.png` (`tools/make-icons.py` from
+ITEM `33-Husbandry.mod` **Beast Capsule**, the empty capsule (500 cats, one inventory cell, `stackable` 5; a copy of the game's Fertiliser,
+else Leather or Hemp, for its weight and other fields), and ITEM `39-` **Filled Beast Capsule** (`CapsuleData.Filled`: a copy of it with
+`stackable` 1, no recipe, and the icon `husbandry-beastcapsule-filled.png`, the same picture with a bright red outline, made by
+`tools/make-icons.py`). Its inventory icon is `Husbandry/items/icons/husbandry-beastcapsule.png` (`tools/make-icons.py` from
 `concept-art/beastcapsule-inventory.png`; record `icon`, `auto icon image` false), which Play copies into the deployed mod (`PlayDeployAssets`).
 Its look is its own model, `Husbandry/ItemModels/beast-capsule.glb` (`size` 0.11 m in `beast-capsule.json`, textures 1024): the import
 makes mesh `husbandry_beast_capsule.mesh` and MATERIAL_SPECS_CLOTHING `950000-Husbandry.mod` (`ItemModels/ids.json`), and when the data has
@@ -167,26 +169,41 @@ game reads use nodes as the operator's spot only with two or more); it keeps the
 build cost (3 Iron Plates) and power draw (5), and is that bench when the import has not run.
 
 - **Catch**: right-click an empty capsule in a character's own inventory (engine item use) within 40 units of an animal that is one of the
-  player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead or
-  carried. The nearest goes in: what it carried drops where it lay,
-  and the character is removed from the world. One capsule of a stack is filled (split off; on the ground when the inventory has no room).
+  player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead,
+  carried or already out of a capsule. The nearest goes in: what it carried drops where it lay, one empty capsule of the stack is used up,
+  the character is removed from the world and a **Filled Beast Capsule** bound to it drops on the ground where it lay, to be picked up.
 - **Throw**: right-click a knocked-out beast a capsule may catch and choose **Throw Beast Capsule**: the first selected character holding an
-  empty capsule walks to within 300 units (30 m) of it (a move order, renewed every 2 s), plays the throw (1.7 s; the capsule lands 1.1 s in) and catches it as above
-  (`CapsuleThrows`), except 20% of the time (`BreakFreeChance`, rolled from the world seed, the beast and the tick): the beast breaks free, its
-  KO timer ends and its vital parts (flesh − stun + rig, stun first) and blood come up to 1, just enough that it stands and fights; the capsule
-  stays empty. Where it lands a pink mist rises for 3 s (the game's `Poison_Gas_White` particle system, tinted; display only, drawn by
-  `CapsuleUi` from the landings the system queues). The throw plays the clip `husbandry_capsule_throw` (a disabled COMBAT_TECHNIQUE, so no fight picks it, played as a mod
-  combat move; `ThrowData`) from `items/animations/husbandry_throw_male.skeleton` / `_female.skeleton`, an ANIMATION_FILE the data phase links to
-  every race whose `male mesh` is under `data/character/meshes/` (humans, shek, hivers, skeletons, fishmen: male_skeleton / female_skeleton
-  bodies; not the Hive Queen). The clip is Meshy's Ball_throw retargeted onto both skeletons with the Motion Lab
-  (Meitou-Modding-Ecosystem/PZAKenshiMotionLab, `rig --reference`, then `motionlab.kenshi_export`), cut to 0.5-2.2 s of the source, played in
-  place and turned so the hand lets go straight ahead, 0.9 s in. A throw ends with a line over the thrower when the beast gets up, is carried or leaves, the thrower
-  is down or has no empty capsule left, or after 2 minutes. Throws in progress are not saved.
-- **Summon**: right-click a full capsule: the animal comes out 15 units from the character as a new member of the character's squad
-  (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod skill levels, fully healed; the capsule is empty again. No room in
-  the squad or the faction: it stays in.
-- A full capsule's `ModTag` is `husbandry.capsule:<key>` (it stacks only with capsules of the same key); the animals are kept by key in the
-  sidecar. Debug row **Husbandry: capsules** lists them.
+  empty capsule walks to within 300 units (30 m) of it (a move order, renewed every 2 s), stops (a move order to where it stands) and plays
+  the throw: the clip is 1.7 s, the hand lets go 0.9 s in and the capsule flies at 300 units a second (`CapsuleThrows.LandAt`). Each tick until
+  the clip has ended and the capsule has landed the thrower is turned to face the beast (`CharacterHot.Yaw`). Before the landing, another
+  order (a new order in hand, or a goal more than 5 units from where it stopped) or a hit on the thrower (`ICombatHitObserver`) interrupts the
+  throw: it fails with "Throw interrupted" and the capsule is kept. In flight a red streak runs from the hand (`CapsuleThrows.Hand`, in the
+  thrower's frame) to the beast on an arc a fifth of the distance high (`CapsuleFlights`: one small puff of `Poison_Gas_White` tinted red a
+  tick, from `AddFrame`; display only: the engine has no way for a mod to draw a flying item). On landing it catches as above, except 20% of
+  the time (`BreakFreeChance`, rolled from the world seed, the beast and the tick): the beast breaks free, its KO timer ends and its vital parts
+  (flesh − stun + rig, stun first) and blood come up to 1, just enough that it stands and fights; the capsule is kept. Where it lands a pink
+  mist rises for 3 s (the same particle system tinted, drawn by `CapsuleUi` from the landings the system queues). The throw plays the clip
+  `husbandry_capsule_throw` (a disabled COMBAT_TECHNIQUE, so no fight picks it, played as a mod combat move; `ThrowData`) from
+  `items/animations/husbandry_throw_male.skeleton` / `_female.skeleton`, an ANIMATION_FILE the data phase links to every race whose `male mesh`
+  is under `data/character/meshes/` (humans, shek, hivers, skeletons, fishmen: male_skeleton / female_skeleton bodies; not the Hive Queen).
+  The clip is Meshy's Ball_throw retargeted onto both skeletons with the Motion Lab (Meitou-Modding-Ecosystem/PZAKenshiMotionLab,
+  `rig --reference`, then `motionlab.kenshi_export`), cut to 0.5-2.2 s of the source, played in place and turned so the hand lets go straight
+  ahead. A throw also ends with a line over the thrower when the beast gets up, is carried or leaves, the thrower is down or has no empty
+  capsule left, or after 2 minutes. Throws in progress are not saved.
+- **Summon and recall**: a filled capsule stays bound to its beast. Right-click it while the beast is inside: the beast comes out 15 units
+  from the character as a new member of the character's squad (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats and mod
+  skill levels, fully healed, and the capsule keeps its body's lasting id (`LastingIds`). Right-click it while the beast is out and within
+  300 units (30 m): the beast goes back in with its stats and skills as they are now (what it carried drops). A beast that died or is gone
+  for good leaves the capsule unbound, and its next click turns it into an empty capsule. A capsule acts at most once a second
+  (`CapsuleSystem.SettleTicks`, 30 ticks): a click before then, or any further click while paused, says "Wait a moment" and does nothing.
+  No room in the squad or the faction: the beast stays in. The click acts at once, in the item use's serial step.
+- **Tooltip**: a filled capsule's tooltip (`CapsuleTooltip`, engine item tooltip lines) shows what it contains (name and kind), sex and age
+  (adult from 0.6), whether the beast is in or out, Str, Tough, Dex, Atk, Def and Ath, the mod skills trained to 1 or more and its traits.
+- **Beast traits**: a capsule's beast keeps a list of traits (`StoredBeast.Traits`: id and value), saved with it and kept while it is out.
+  `BeastTraits.Register(new BeastTrait(id, label, format))` names one for the tooltip; nothing gives traits yet (rare catches, breeding and
+  specialised training will).
+- A filled capsule's `ModTag` is `husbandry.capsule:<key>`; the beasts are kept by key in the sidecar. An older save's full capsule (the empty
+  record with a key) still works, and becomes a Filled Beast Capsule at its first click. Debug row **Husbandry: capsules** lists them.
 
 ## Supported animals
 
@@ -228,8 +245,9 @@ Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mo
 ## Save data
 
 The sidecar holds each paired female's next try (game hours), the Beastmaster's six stock places (portrait serial, refill hour) and each
-settlement Beastmaster (settlement number, name, its six places) and the animals in Beast Capsules (next key; key, record, age, name, sex,
-stored stats, mod skill levels), version 5. Versions 1 to 4 also held the hitches (portrait serial, post id) and the set sexes (from version
+settlement Beastmaster (settlement number, name, its six places) and the beasts bound to Beast Capsules (next key; key, record, kind, age, name, sex,
+stored stats, mod skill levels, traits, the lasting id of its body while out), version 6 (version 4 and 5 capsules have no kind or traits
+and are all inside). Versions 1 to 4 also held the hitches (portrait serial, post id) and the set sexes (from version
 2); loading one hands them to Animal Behaviors, which saves them from then on. A version 3 sidecar loads with no capsule animals, a version 2
 with no settlement Beastmasters either, a version 1 with none of the last four. All of it is in the world's state hash. A stock platoon is
 found again by its tag (`husbandry.stock.N` in Mourn, `husbandry.stock.outpost.T.N` at settlement T); a place whose animal is not found after
@@ -239,7 +257,7 @@ a load adopts its platoon's animal again.
 
 Record ids `<n>-Husbandry.mod`: 1 the research, 2 the post (a copy of vanilla Prisoner Pole, `18913-small_changes_otto.mod`, without its cage
 function, category HUSBANDRY), 3 the Beastmaster, 4 his squad, 5 his conversation, 6 to 18 its lines and the DA 48 and DA 1 actions, 19 his
-shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 its ANIMATION_FILE (linked into the humanoid races' `animation files`), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality. Every building (post, training buildings, bench) is in the build menu category
+shop's vendor list, 20 to 22 his stock's squads (Garru, Crab, Dog), 30 to 32 the training buildings, 33 the Beast Capsule, 34 the throw's COMBAT_TECHNIQUE, 35 its ANIMATION_FILE (linked into the humanoid races' `animation files`), 36 the Capsule Bench, 37 its functionality, 38 the Bone Pile's functionality, 39 the Filled Beast Capsule. Every building (post, training buildings, bench) is in the build menu category
 HUSBANDRY (`HusbandryData.Category`; the menu lists a category's name as written). The entry adds them
 in the data phase (`IModDataPhase.EditData`, engine docs/modding.md "Data phase") from the merged game data as it loads (`HusbandryData.Build`),
 so they follow the player's own game and mods and need no install at build time. The shipped `Husbandry.mod` is empty (release
