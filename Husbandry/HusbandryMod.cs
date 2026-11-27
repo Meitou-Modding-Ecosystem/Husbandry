@@ -106,6 +106,9 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         _throwMove = c.Data.Find(ThrowData.Technique) is { } move ? CombatTechnique.From(move) : null;
         c.AddCombatMove((world, id, tick) => _latest?.Throws.Move(world, id, tick));
         _drillMove = c.Data.Find(ThrowData.DrillTechnique) is { } drill ? CombatTechnique.From(drill) : null;
+        c.Log(_drillMove is null
+            ? "husbandry: training drill technique " + ThrowData.DrillTechnique + " is missing: trainers only turn to their animals"
+            : "husbandry: training drill plays clip " + _drillMove.AnimName);
         c.AddCombatMove((world, id, tick) => _latest?.Drills.Move(world, id, tick));
 #if MEITOU_BUILDING_ROWS
         c.AddUi(new StatusUi(() => _latest?.Status));
@@ -118,6 +121,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         c.AddDebugCommand("Husbandry: hitched animals", _ => Told(c, _latest?.View ?? NoWorld));
         c.AddDebugCommand("Husbandry: Beastmaster", _ => Told(c, _latest?.TraderView ?? NoWorld));
         c.AddDebugCommand("Husbandry: capsules", _ => Told(c, _latest?.CapsuleView ?? NoWorld));
+        c.AddDebugCommand("Husbandry: training drills", _ => Told(c, _latest?.Drills.View ?? NoWorld));
         c.AddDebugCommand(SettlementTraderRow.Label, d => Told(c, SettlementTraderRow.Run(d, _latest?.Outposts)), hasField: true);
         c.AddDebugCommand("Husbandry: try breeding now", d =>
         {
