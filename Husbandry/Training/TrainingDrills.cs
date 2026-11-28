@@ -2,12 +2,14 @@ using System.Collections.Frozen;
 using Husbandry.Capsules;
 using Meitou.Data.Gameplay.Combat;
 using Meitou.Simulation;
+using Meitou.Simulation.Movement;
 
 namespace Husbandry.Training;
 
 /// <summary>
-/// The trainer's drill at a Training Post (docs/husbandry.md "Training"): while a trainer works the post for its animal, every
-/// <see cref="PeriodSeconds"/> from the moment the pair formed the trainer turns to face the animal and plays the drill clip once
+/// The trainer's drill at a Training Post (docs/husbandry.md "Training"): while a trainer works the post for its animal and the animal stands at
+/// the post (<see cref="Lesson.Ready"/>), the two face each other, and every <see cref="PeriodSeconds"/> from the moment the pair formed the
+/// trainer plays the drill clip once
 /// (<see cref="Capsules.ThrowData.DrillClip"/>, as a mod combat move; without its record, or on a race that does not link Husbandry's animation file
 /// (<paramref name="races"/>), the trainer only turns). Pairs come from each training check
 /// (<see cref="Pair"/>), the facing from every serial step (<see cref="Step"/>). Nothing is saved: a loaded pair starts its drill again.
@@ -55,7 +57,7 @@ public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds, IRe
         var pairs = new Dictionary<CharacterId, Drill>();
         foreach (var lesson in lessons)
         {
-            if (lesson.Trainer < 0) continue;
+            if (lesson.Trainer < 0 || !lesson.Ready) continue;
 
             var trainer = table.IdOf(lesson.Trainer);
             var animal = table.IdOf(lesson.Animal.Slot);
@@ -103,18 +105,28 @@ public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds, IRe
     }
 
     /// <summary>
-    /// The serial step: a trainer in its drill faces its animal.
+    /// The serial step: each paired trainer and animal standing idle face each other.
     /// </summary>
     public void Step(World world)
     {
         var table = world.Characters;
         foreach (var (trainer, drill) in _drills)
         {
-            if (Progress(drill.Since, world.Tick, world.TickSeconds, clipSeconds) is null) continue;
             if (!table.TryResolveNext(trainer, out int t) || !table.TryResolveNext(drill.Animal, out int a)) continue;
 
-            table.Next[t].Yaw = CapsuleThrows.YawTowards(table.Next[t].Position, table.Next[a].Position);
+            Face(table, t, a);
+            Face(table, a, t);
         }
+    }
+
+    /// <summary>
+    /// Turns a character standing idle to face another.
+    /// </summary>
+    static void Face(CharacterTable table, int slot, int other)
+    {
+        if ((CharacterTask)table.Next[slot].Task != CharacterTask.Idle) return;
+
+        table.Next[slot].Yaw = CapsuleThrows.YawTowards(table.Next[slot].Position, table.Next[other].Position);
     }
 
     /// <summary>
