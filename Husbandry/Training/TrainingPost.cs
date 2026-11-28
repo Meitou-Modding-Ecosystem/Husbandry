@@ -7,14 +7,15 @@ using Meitou.Simulation.Production;
 namespace Husbandry.Training;
 
 /// <summary>
-/// One training animal at a check, for the building panel (<see cref="BuildingStatus"/>): the animal, the skill and its trainer's slot (-1 none).
+/// One training animal at a check, for the building panel (<see cref="BuildingStatus"/>) and the drill (<see cref="TrainingDrills"/>): the animal,
+/// the skill, its trainer's slot (-1 none) and whether the animal stands at the post for the lesson (<see cref="Trainers.LessonReach"/>).
 /// </summary>
-public readonly record struct Lesson(Worker Animal, TrainableSkill Skill, int Trainer);
+public readonly record struct Lesson(Worker Animal, TrainableSkill Skill, int Trainer, bool Ready);
 
 /// <summary>
 /// The Training Post (docs/husbandry.md "Training"): select animals, right-click the post and choose "Train: Fetch" (or another skill). A
-/// training animal keeps to a pen round the post, as a hitched one does, and learns the skill by the game hour only while a trainer works the post
-/// for it (<see cref="Trainers"/>), at the trainer's rate, halved without treats (<see cref="Treats"/>). A post takes one animal and one trainer at
+/// training animal keeps to a pen round the post, as a hitched one does, until a trainer works the post; then it walks to its spot facing the
+/// trainer (<see cref="Trainers.PupilSpot"/>) and learns the skill by the game hour only while both stand within 5 m of the post (<see cref="Trainers"/>), at the trainer's rate, halved without treats (<see cref="Treats"/>). A post takes one animal and one trainer at
 /// a time. Serial steps only.
 /// </summary>
 public static class TrainingPost
@@ -54,16 +55,31 @@ public static class TrainingPost
                 continue;
             }
 
-            Pens.Keep(world, w.AsHitched, pens, purpose);
             if (Hitches.Down(w.Cold) || w.Cold.InCombat) continue;
 
             int trainer = working.TryGetValue(w.Site.Id, out var free) && free.TryDequeue(out int t) ? t : -1;
-            lessons.Add(new Lesson(w, skill, trainer));
-            if (trainer >= 0) Train(world, trainers, w, skill, trainer, hours, hourMark, meat);
-            else if (hourMark) AnimalWork.Say(world, w.Slot, "Waiting for a trainer");
+            if (trainer < 0) Pens.Keep(world, w.AsHitched, pens, purpose);
+
+            bool ready = trainer >= 0 && Gather(world, w);
+            lessons.Add(new Lesson(w, skill, trainer, ready));
+            if (ready) Train(world, trainers, w, skill, trainer, hours, hourMark, meat);
+            else if (trainer < 0 && hourMark) AnimalWork.Say(world, w.Slot, "Waiting for a trainer");
         }
 
         return lessons;
+    }
+
+    /// <summary>
+    /// Brings the animal to the lesson: true when it stands within <see cref="Trainers.LessonReach"/> of the post, free of orders; otherwise an
+    /// animal free to be sent walks to its spot (<see cref="Trainers.PupilSpot"/>). An animal the player sent elsewhere is left alone.
+    /// </summary>
+    public static bool Gather(World world, Worker w)
+    {
+        if (!AnimalWork.Free(world, w.Slot, w.Cold)) return false;
+        if (AnimalWork.Away(world, w.Slot, w.Site.Position) <= Trainers.LessonReach) return true;
+
+        AnimalWork.Walk(world, w.Slot, Trainers.PupilSpot(world, w.Site));
+        return false;
     }
 
     /// <summary>

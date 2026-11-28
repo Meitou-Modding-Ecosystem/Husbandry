@@ -116,15 +116,18 @@ small pieces across the atlas, and 2048 blurs it. Concept art: `concept-art/post
   of other mods offer their own). An animal whose race does not support training, or that a skill's race list leaves out, comes off the job
   with a floating "A <race> can't learn <skill>" (Supported animals). A post takes **one animal**: the first sent keeps it while it trains
   there; another sent to it comes off the job with a floating "This Training Post already has an animal" (`TrainingPost.Choose`; not saved,
-  so after a load the first in slot order keeps it). The animal keeps to a pen round the post as a hitched one does (Animal Behaviors' Pen
-  radius and Grazing) and learns only from a trainer.
+  so after a load the first in slot order keeps it). Without a trainer the animal keeps to a pen round the post as a hitched one does (Animal
+  Behaviors' Pen radius and Grazing); while one works the post it stops grazing and, when free of the player's orders, walks to its spot
+  30 units in front of the post and 20 to its right (`Trainers.PupilSpot`). It learns only while it and its trainer both stand within
+  **50 units (5 m)** of the post (`Trainers.LessonReach`, `Lesson.Ready`).
 - **Trainers** (job 4523 "Training animals", **Train animals here** on the Training Post, people; `Trainers`): while an animal of the player's
-  holds a training job on the post, the trainer walks to 30 units in front of it and works there (a job of the chooser, `IJobSource`; it stands
-  down when no animal trains there). A post takes **one trainer**: while one walks to it or works it on the job, the chooser refuses the job
+  holds a training job on the post, the trainer walks to its spot 30 units in front of it and 20 to its left (`Trainers.TrainerSpot`, 4 m from
+  the animal's) and works there once within 50 units of the post; one farther off does not teach (a job of the chooser, `IJobSource`; it
+  stands down when no animal trains there). A post takes **one trainer**: while one walks to it or works it on the job, the chooser refuses the job
   to anyone else ("Another trainer works this post"). An animal without a trainer floats "Waiting for a trainer" each game hour.
-  **Drill** (`TrainingDrills`): from the check at which a trainer and its animal pair up, every 10 s the trainer turns to face the animal
-  (`CharacterHot.Yaw`, each serial step while it plays) and plays the clip `husbandry_training_drill` (2.97 s) once as a mod combat move
-  (COMBAT_TECHNIQUE `40-`, `ThrowData.DrillTechnique`), looping while both stay on the post. The clip is Meshy's Cartographer as Kenshi
+  **Drill** (`TrainingDrills`): from the check at which a trainer and its animal pair up (both at the post), the two face each other
+  (`CharacterHot.Yaw`, each serial step while each stands idle), and every 10 s the trainer plays the clip `husbandry_training_drill` (2.97 s)
+  once as a mod combat move (COMBAT_TECHNIQUE `40-`, `ThrowData.DrillTechnique`), looping while both stay on the post. The clip is Meshy's Cartographer as Kenshi
   Races' library retargeted it, copied into Husbandry's own animation files (Data file); Husbandry does not depend on Kenshi Races. Not saved:
   after a load the drill starts again. The animal gains, per game hour, 0.2 from a trainer at **Animal Handling** 1 (mod skill
   `husbandry.handling`, people start at 1) rising in a line to 0.8 at 50 or more: about two game days, or half a day, from 0 to 10. The

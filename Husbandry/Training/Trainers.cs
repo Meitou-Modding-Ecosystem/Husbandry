@@ -13,8 +13,8 @@ using Meitou.Simulation.Production;
 namespace Husbandry.Training;
 
 /// <summary>
-/// The Training Post's trainers (docs/husbandry.md "Training"): a person given the post's Train animals job walks to the front of the post and
-/// works there while an animal of the player's holds a training job on it, one trainer a post; an animal learns only from a working trainer, at
+/// The Training Post's trainers (docs/husbandry.md "Training"): a person given the post's Train animals job walks to its spot in front of the
+/// post (<see cref="TrainerSpot"/>) and works there, within <see cref="LessonReach"/> of the post, while an animal of the player's holds a training job on it, one trainer a post; an animal learns only from a working trainer, at
 /// a rate set by the trainer's Animal Handling (<see cref="Rate"/>). The job's contributor to the chooser (<see cref="IJobSource"/>) and the serial
 /// step that turns an arrived walk into work. The trainer keeps the post's treats stocked (<see cref="Fetch"/>), Raw Meat by the record id
 /// <paramref name="meat"/> gives. Nothing of its own is saved: the engine saves the job, and a loaded trainer walks to the post again.
@@ -34,9 +34,24 @@ public sealed class Trainers(AnimalRegistry registry, Func<string> meat) : IJobS
     public const string Name = "Training animals";
 
     /// <summary>
-    /// Where the trainer stands: this far in front of the post (its local +Z), in game units.
+    /// Where the trainer and the animal stand: this far in front of the post (its local +Z), in game units.
     /// </summary>
     const float StandOff = 30;
+
+    /// <summary>
+    /// How far to either side of the post's front the trainer (left) and the animal (right) stand, in game units: they face each other 4 m apart.
+    /// </summary>
+    const float Side = 20;
+
+    /// <summary>
+    /// How near the post both trainer and animal must be for a lesson, in game units (5 m).
+    /// </summary>
+    public const float LessonReach = 50;
+
+    /// <summary>
+    /// How near its spot a character counts as standing on it, in game units.
+    /// </summary>
+    public const float SpotReach = 20;
 
     /// <summary>
     /// The job as the post offers it to people.
@@ -100,14 +115,15 @@ public sealed class Trainers(AnimalRegistry registry, Func<string> meat) : IJobS
     }
 
     /// <summary>
-    /// Sends the character to the front of the post, or sets it to work when it stands there already.
+    /// Sends the character to its spot in front of the post, or sets it to work when it stands there already.
     /// </summary>
     public void Start(World world, int slot, int k)
     {
         if (PostOf(world, slot, k) is not { } post) return;
 
-        if (At(world, slot, post)) Work(world, slot, k, post);
-        else TaskStart.Start(world, slot, new TaskRequest(CharacterTask.GoTo, Type, TaskSource.Job) { Point = StandAt(world, post), Site = post.Id, Job = k });
+        var spot = TrainerSpot(world, post);
+        if (At(world, slot, post) && AnimalWork.Away(world, slot, spot) <= SpotReach) Work(world, slot, k, post);
+        else TaskStart.Start(world, slot, new TaskRequest(CharacterTask.GoTo, Type, TaskSource.Job) { Point = spot, Site = post.Id, Job = k });
     }
 
     /// <summary>
@@ -303,17 +319,27 @@ public sealed class Trainers(AnimalRegistry registry, Func<string> meat) : IJobS
     }
 
     /// <summary>
-    /// Whether the character stands by the post and has stopped walking.
+    /// Whether the character stands within <see cref="LessonReach"/> of the post and has stopped walking.
     /// </summary>
     static bool At(World world, int slot, BuildSite post) =>
-        AnimalWork.Away(world, slot, post.Position) <= AnimalWork.Reach && (CharacterTask)world.Characters.Next[slot].Task != CharacterTask.GoTo;
+        AnimalWork.Away(world, slot, post.Position) <= LessonReach && (CharacterTask)world.Characters.Next[slot].Task != CharacterTask.GoTo;
 
     /// <summary>
-    /// The trainer's spot: <see cref="StandOff"/> in front of the post, on the ground.
+    /// The trainer's spot: <see cref="StandOff"/> in front of the post and <see cref="Side"/> to its left, on the ground.
     /// </summary>
-    static Vector3 StandAt(World world, BuildSite post)
+    public static Vector3 TrainerSpot(World world, BuildSite post) => Spot(world, post, -Side);
+
+    /// <summary>
+    /// The training animal's spot, facing the trainer's: <see cref="StandOff"/> in front of the post and <see cref="Side"/> to its right.
+    /// </summary>
+    public static Vector3 PupilSpot(World world, BuildSite post) => Spot(world, post, Side);
+
+    /// <summary>
+    /// A spot <see cref="StandOff"/> in front of the post and <paramref name="side"/> across, on the ground; the post itself when not walkable.
+    /// </summary>
+    static Vector3 Spot(World world, BuildSite post, float side)
     {
-        var at = post.Position + Vector3.Transform(new Vector3(0, 0, StandOff), post.Rotation);
+        var at = post.Position + Vector3.Transform(new Vector3(side, 0, StandOff), post.Rotation);
         return world.Walkability.IsWalkable(at.X, at.Z) ? at with { Y = world.Walkability.GroundHeight(at.X, at.Z) } : post.Position;
     }
 
