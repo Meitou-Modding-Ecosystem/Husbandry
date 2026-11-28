@@ -187,7 +187,8 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
   player's whose race supports summoning, or is knocked out (unconscious) and of a race that supports taming (Supported animals), not dead,
   carried, wearing a backpack (it floats "Take <name>'s backpack off first") or already out of a capsule (one capsule per beast: one out of its
   capsule floats "<name> already has a Beast Capsule"). The nearest
-  goes in: what it carried drops where it lay, one empty capsule of the stack is used up, a **Filled Beast Capsule** bound to it drops on the
+  goes in with what it carries (nothing drops: a beast without a backpack carries only what its body is made with, such as the leather its
+  race drops when butchered, and a summon makes that again; `CapsuleSystem.GoIn`), one empty capsule of the stack is used up, a **Filled Beast Capsule** bound to it drops on the
   ground where it lay, to be picked up, and the character leaves the world at the slow world of the same tick (`CapsuleSystem.Settle`: an item
   use runs in the inputs phase, where `CharacterTable.Remove` throws); a recall does the same.
 - **Throw**: right-click a beast a capsule may catch (a knocked-out one, or one of the player's own as above) and choose **Throw Beast
@@ -216,7 +217,7 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
   from the character as a new member of the character's squad (`SpawnIntoPlayerSquad` at its age), with its name, sex, stored stats (every
   stat with storage), every registered mod skill's level (any mod's), its traits and every mod's character tag (`CharacterTags`), fully healed,
   and the capsule keeps its body's lasting id (`LastingIds`). Right-click it while the beast is out and within 300 units (30 m): the beast goes
-  back in with all of that as it is now, so gains made while out are kept (what it carried drops). Going in takes every tag off the old body
+  back in with all of that as it is now, so gains made while out are kept (nothing drops). Going in takes every tag off the old body
   (`StoredBeast.Take`), so no mod finds a body that is in a capsule; the summon puts them on the new body (`StoredBeast.Restore`). A mod that
   keeps its own data on an animal keeps it in a character tag, which travels with it. A beast that died or is gone
   for good leaves the capsule unbound, and its next click turns it into an empty capsule. A capsule acts at most once a second

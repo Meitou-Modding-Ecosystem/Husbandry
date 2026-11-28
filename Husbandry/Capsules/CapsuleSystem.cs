@@ -233,13 +233,11 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         _bound[key] = new BoundBeast(StoredBeast.Take(world, table.IdOf(target), cold, sexes.Female(cold)));
         filled.ModTag = Tag(key);
         UseOne(capsule, inventory);
-        DropCarried(world, target, cold);
         world.GroundItems.Drop(filled, at, 0);
-        if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
 
         AnimalWork.Say(world, user, HusbandryText.Format("Caught {1}!", cold.Name));
         log($"husbandry: {table.Cold(user)!.Name} caught {cold.Name} ({cold.RecordId}) in capsule {key}");
-        Leave(world, target);
+        GoIn(world, target);
     }
 
     /// <summary>
@@ -308,18 +306,20 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
     }
 
     /// <summary>
-    /// Drops what the animal carries (its pack included) on the ground where it lies.
+    /// A body going into its capsule: what it carries goes with it (an animal wearing no backpack carries only what its body is made with, such
+    /// as the leather its race drops when butchered, and a summon makes that again), its sex leaves the table and it leaves the world at the slow
+    /// world (<see cref="Leave"/>).
     /// </summary>
-    static void DropCarried(World world, int slot, CharacterCold cold)
+    internal void GoIn(World world, int slot)
     {
-        if (cold.Inventory is not { } inv) return;
-
-        var at = world.Characters.Next[slot].Position;
-        foreach (var item in inv.All().ToList())
+        var cold = world.Characters.Cold(slot)!;
+        if (cold.Inventory is { } inv)
         {
-            inv.Remove(item);
-            world.GroundItems.Drop(item, at, 0);
+            foreach (var item in inv.All().ToList()) inv.Remove(item);
         }
+
+        if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
+        Leave(world, slot);
     }
 
     /// <summary>
@@ -401,12 +401,10 @@ public sealed class CapsuleSystem(PopulationSystem? population, Sexes sexes, Ani
         bound.Beast = StoredBeast.Take(world, id, cold, sexes.Female(cold));
         bound.Out = default;
         bound.UsedAt = world.Tick;
-        DropCarried(world, slot, cold);
-        if (cold.PortraitSerial is { } serial) sexes.Assigned.Remove(serial);
 
         AnimalWork.Say(world, user, HusbandryText.Format("{1}, come back!", cold.Name));
         log($"husbandry: capsule {key} recalled {cold.Name}");
-        Leave(world, slot);
+        GoIn(world, slot);
     }
 
     /// <summary>

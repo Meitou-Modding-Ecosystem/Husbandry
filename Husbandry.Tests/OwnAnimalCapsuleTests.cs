@@ -123,6 +123,29 @@ public sealed class OwnAnimalCapsuleTests
     }
 
     /// <summary>
+    /// A beast going into its capsule takes what it carries with it: nothing is left on the ground, before or after it leaves the world. Catches
+    /// the Gorillo's leather dropping at each catch and recall (Matthew's play-test 2026-11-28).
+    /// </summary>
+    [Fact]
+    public void A_beast_going_into_its_capsule_drops_nothing()
+    {
+        using var world = Empty();
+        var capsules = Capsules();
+        var own = Spawn(world, animal: true, player: true);
+        var cold = Cold(world, own);
+        cold.Inventory = new Inventory();
+        cold.Inventory.Items.Add(new ItemInstance { Record = "leather", Quantity = 2 });
+        Assert.True(world.Characters.TryResolveNext(own, out int slot));
+
+        capsules.GoIn(world, slot);
+        Assert.Equal(0, world.GroundItems.Count);
+        capsules.Settle(world);
+
+        Assert.Equal(0, world.GroundItems.Count);
+        Assert.False(world.Characters.TryResolveNext(own, out _));
+    }
+
+    /// <summary>
     /// A system that puts one beast in a capsule in the inputs phase, as an item use does, and checks it can't be caught again that tick.
     /// </summary>
     sealed class CatchOnInputs(CapsuleSystem capsules, CharacterId beast) : ITickSystem
@@ -134,8 +157,7 @@ public sealed class OwnAnimalCapsuleTests
         {
             if (!world.Characters.TryResolveNext(beast, out int slot)) return;
 
-            
-            capsules.Leave(world, slot);
+            capsules.GoIn(world, slot);
             Assert.False(capsules.Catchable(world.Characters.Cold(slot)!));
         }
 
