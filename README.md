@@ -7,7 +7,7 @@ does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.
 
 - **Mod order:** a mod that adds races (Kenshi Races, ...) goes above Husbandry in the mod list. Husbandry links its throw and drill clips to
   the races on the human skeletons in its data phase, which only sees races of mods loaded before it
-  ([docs/husbandry.md](docs/husbandry.md), "Data file").
+  ([docs/husbandry.md](docs/husbandry.md), "Beast Capsules").
 - Adding Training Post skills from your own mod (animals are registered with Animal Behaviors): [docs/depending-on-husbandry.md](docs/depending-on-husbandry.md) (agent skill
   `.claude/skills/husbandry-dependent`).
 
