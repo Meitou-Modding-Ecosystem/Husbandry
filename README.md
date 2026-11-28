@@ -5,6 +5,9 @@ Hitching posts, breeding, animal training and capsules for the player's animals 
 [Animal Behaviors](https://github.com/Meitou-Modding-Ecosystem/AnimalBehaviors) (`animal.behaviors`, locked in `meitou.lock.json`); what it
 does, its data file and settings: [docs/husbandry.md](docs/husbandry.md). GPL-3.0-or-later.
 
+- **Mod order:** a mod that adds races (Kenshi Races, ...) goes above Husbandry in the mod list. Husbandry links its throw and drill clips to
+  the races on the human skeletons in its data phase, which only sees races of mods loaded before it
+  ([docs/husbandry.md](docs/husbandry.md), "Beast Capsules").
 - Adding Training Post skills from your own mod (animals are registered with Animal Behaviors): [docs/depending-on-husbandry.md](docs/depending-on-husbandry.md) (agent skill
   `.claude/skills/husbandry-dependent`).
 
