@@ -63,6 +63,11 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     CombatTechnique? _drillMove;
 
     /// <summary>
+    /// The races that link Husbandry's animation file (the drill's debug row says whether a trainer's does).
+    /// </summary>
+    IReadOnlySet<string> _drillRaces = new HashSet<string>();
+
+    /// <summary>
     /// The mist where a thrown capsule lands: the game's white poison gas (EFFECT 62780-Newwworld.mod) tinted pink, for <see cref="MistSeconds"/>.
     /// </summary>
     const string MistEffect = "Poison_Gas_White";
@@ -89,7 +94,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
     public void EditData(ModDataContext c)
     {
         foreach (var record in HusbandryData.Build(c.Data).Records) c.Apply(record);
-        ThrowData.LinkRaces(c);
+        c.Log("husbandry: animations linked to " + ThrowData.LinkRaces(c) + " races on the human skeletons");
     }
 
     public void Initialize(ModContext c)
@@ -110,6 +115,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
             ? "husbandry: training drill technique " + ThrowData.DrillTechnique + " is missing: trainers only turn to their animals"
             : "husbandry: training drill plays clip " + _drillMove.AnimName);
         c.AddCombatMove((world, id, tick) => _latest?.Drills.Move(world, id, tick));
+        _drillRaces = ThrowData.LinkedRaces(c.Data);
 #if MEITOU_BUILDING_ROWS
         c.AddUi(new StatusUi(() => _latest?.Status));
 #endif
@@ -138,7 +144,7 @@ public sealed class HusbandryMod : IMod, IModDataPhase, IHusbandryApi, IModDepen
         _registry.Freeze();
         var animals = _animals!.Current ?? throw new InvalidOperationException("Animal Behaviors built no state for this world.");
         return new HusbandrySystem(context, Settings, _animals.Settings, animals, _registry, c.RngPurpose, c.Log, _throwMove, _drillMove,
-            ThrowData.DrillSeconds);
+            ThrowData.DrillSeconds, _drillRaces);
     }
 
     /// <summary>
