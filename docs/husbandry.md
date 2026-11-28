@@ -200,8 +200,11 @@ build cost (3 Iron Plates) and power draw (5), and is that bench when the import
   (flesh − stun + rig, stun first) and blood come up to 1, just enough that it stands and fights; the capsule is kept. Where it lands a pink
   mist rises for 3 s (the same particle system tinted, drawn by `CapsuleUi` from the landings the system queues). The throw plays the clip
   `husbandry_capsule_throw` (a disabled COMBAT_TECHNIQUE, so no fight picks it, played as a mod combat move; `ThrowData`) from
-  `items/animations/husbandry_anims_male.skeleton` / `_female.skeleton`, an ANIMATION_FILE the data phase links to every race whose `male mesh`
-  is under `data/character/meshes/` (humans, shek, hivers, skeletons, fishmen: male_skeleton / female_skeleton bodies; not the Hive Queen).
+  `items/animations/husbandry_anims_male.skeleton` / `_female.skeleton`, an ANIMATION_FILE the data phase links to every race on the human skeletons
+  (`ThrowData.OnHumanSkeleton`): a `male mesh` under `data/character/meshes/` (humans, shek, hivers, skeletons, fishmen: male_skeleton /
+  female_skeleton bodies; not the Hive Queen) or in any mod's `items/races/` (bodies fitted onto those skeletons, such as Kenshi Races'; read
+  from the data, no dependency). Only races loaded before Husbandry get it: a mod adding races goes above Husbandry in the mod list. The log
+  says how many races were linked.
   The clip is Meshy's Ball_throw retargeted onto both skeletons with the Motion Lab (Meitou-Modding-Ecosystem/PZAKenshiMotionLab,
   `rig --reference`, then `motionlab.kenshi_export`), cut to 0.5-2.2 s of the source, played in place and turned so the hand lets go straight
   ahead. A throw also ends with a line over the thrower when the beast gets up, is carried or leaves, the thrower is down or has no empty
@@ -257,7 +260,7 @@ Breeding, Days between tries (1 to 30), the three chances, and Beastmaster of Mo
 - **Husbandry: hitched animals**: each hitched animal's race, sex, age, hunger and next try, then the latest tries (also in the log).
 - **Husbandry: capsules**: each animal kept in a Beast Capsule.
 - **Husbandry: training drills**: whether the trainer's drill clip loaded (the log says so at start too), then each trainer and animal pair
-  and whether it is drilling or resting.
+  and whether it is drilling or resting; a trainer whose race does not link Husbandry's animation file is marked "has no drill clip".
 - **Husbandry: Beastmaster**: where his pen is, whether he is placed, and each stock place (in the pen, filling, or sold and back at an hour).
 - **Husbandry: animal trader at settlement**: puts a Beastmaster with the same stock and shop as Mourn's at one of your settlements. Type the
   settlement's name in the row's field (any case), or its number in the list the row prints when the name is missing or shared (1 = the first

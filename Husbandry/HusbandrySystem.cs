@@ -156,7 +156,8 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
     /// A system for one world.
     /// </summary>
     public HusbandrySystem(SystemBuildContext context, HusbandrySettings settings, AnimalSettings pens, IAnimalState animals, AnimalRegistry registry,
-        RngPurpose purpose, Action<string> log, CombatTechnique? throwMove, CombatTechnique? drillMove, float drillSeconds)
+        RngPurpose purpose, Action<string> log, CombatTechnique? throwMove, CombatTechnique? drillMove, float drillSeconds,
+        IReadOnlySet<string> drillRaces)
     {
         _settings = settings;
         _pens = pens;
@@ -172,7 +173,7 @@ public sealed class HusbandrySystem : ITickSystem, IStateHashed, IModSaveData, I
         _hunting = new Hunting(_population, log);
         _tieUp = new TieUp(purpose);
         _trainers = new Trainers(registry, () => _hunting.MeatId);
-        _drills = new TrainingDrills(drillMove, drillSeconds);
+        _drills = new TrainingDrills(drillMove, drillSeconds, drillRaces);
         _capsules = new CapsuleSystem(_population, _sexes, registry, log);
         _throws = new CapsuleThrows(_capsules, HusbandryData.Capsule, throwMove, purpose);
     }

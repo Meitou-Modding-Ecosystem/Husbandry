@@ -114,4 +114,21 @@ public sealed class TrainingPostTests
 
         throw new DirectoryNotFoundException("No Husbandry/items/animations above " + AppContext.BaseDirectory);
     }
+
+    /// <summary>
+    /// Husbandry's clips go to every race on the game's human skeletons: the game's human bodies (not the Hive Queen's) and bodies fitted onto
+    /// them in any mod's items/races, never an animal's. Catches a fitted race (Matthew's Crevan trainer, 2026-11-27) turning without its drill.
+    /// </summary>
+    [Theory]
+    [InlineData(@"data\character\meshes\human_male.mesh", true)]
+    [InlineData(@".\data\character\meshes\Stick_person.mesh", true)]
+    [InlineData(@"data\character\meshes\hive_queen.mesh", false)]
+    [InlineData(@".\mods\KenshiRaces\items\races\crevan_male.mesh", true)]
+    [InlineData(@".\mods\Someone\items\races\owl.mesh", true)]
+    [InlineData(@"data\animal\garru\garru.mesh", false)]
+    [InlineData("", false)]
+    public void Clips_link_to_every_race_on_the_human_skeletons(string maleMesh, bool linked)
+    {
+        Assert.Equal(linked, ThrowData.OnHumanSkeleton(maleMesh));
+    }
 }

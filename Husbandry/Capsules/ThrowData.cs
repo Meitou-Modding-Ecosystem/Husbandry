@@ -76,20 +76,38 @@ public static class ThrowData
     }
 
     /// <summary>
-    /// Adds the animation file to the <c>animation files</c> of every humanoid race (<see cref="Humanoid"/>).
+    /// The folder fitted bodies sit in, in any mod: races fitted onto the game's human skeletons (Kenshi Races' convention, read from the data
+    /// only: Husbandry does not depend on Kenshi Races).
     /// </summary>
-    public static void LinkRaces(ModDataContext c)
+    const string FittedBodies = "/items/races/";
+
+    /// <summary>
+    /// Adds the animation file to the <c>animation files</c> of every race on the human skeletons loaded before Husbandry (<see cref="OnHumanSkeleton"/>);
+    /// returns how many. A race a mod below Husbandry in the mod list adds does not get it.
+    /// </summary>
+    public static int LinkRaces(ModDataContext c)
     {
-        foreach (var race in c.Data.OfType(FcsRecordType.Race).Where(Humanoid))
-            c.Edit(race.StringId).References["animation files"] = [new FcsReference(File, 0, 0, 0)];
+        var races = c.Data.OfType(FcsRecordType.Race).Where(r => OnHumanSkeleton(r.GetPath("male mesh"))).ToList();
+        foreach (var race in races) c.Edit(race.StringId).References["animation files"] = [new FcsReference(File, 0, 0, 0)];
+        return races.Count;
     }
 
     /// <summary>
-    /// Whether a race's body is one of the game's human meshes, so the clip's bones fit it.
+    /// Whether a race whose <c>male mesh</c> is <paramref name="maleMesh"/> is on the game's human skeletons, so the clips' bones fit it: one of the
+    /// game's human meshes (not the Hive Queen's), or a fitted body in some mod's <see cref="FittedBodies"/>.
     /// </summary>
-    static bool Humanoid(GameRecord race)
+    public static bool OnHumanSkeleton(string maleMesh)
     {
-        string mesh = race.GetPath("male mesh").Replace('\\', '/').TrimStart('.', '/').ToLowerInvariant();
-        return mesh.StartsWith(HumanoidMeshes, StringComparison.Ordinal) && !mesh.EndsWith(QueenMesh, StringComparison.Ordinal);
+        string mesh = maleMesh.Replace('\\', '/').TrimStart('.', '/').ToLowerInvariant();
+        bool human = mesh.StartsWith(HumanoidMeshes, StringComparison.Ordinal) && !mesh.EndsWith(QueenMesh, StringComparison.Ordinal);
+        return human || mesh.Contains(FittedBodies, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The string ids of the races whose <c>animation files</c> name Husbandry's file, in the merged data.
+    /// </summary>
+    public static IReadOnlySet<string> LinkedRaces(GameDatabase data) => data.OfType(FcsRecordType.Race)
+        .Where(r => r.GetReferences("animation files").Any(f => f.TargetStringId == File))
+        .Select(r => r.StringId)
+        .ToHashSet(StringComparer.Ordinal);
 }

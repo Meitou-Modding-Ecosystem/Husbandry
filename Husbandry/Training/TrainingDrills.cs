@@ -8,10 +8,11 @@ namespace Husbandry.Training;
 /// <summary>
 /// The trainer's drill at a Training Post (docs/husbandry.md "Training"): while a trainer works the post for its animal, every
 /// <see cref="PeriodSeconds"/> from the moment the pair formed the trainer turns to face the animal and plays the drill clip once
-/// (<see cref="Capsules.ThrowData.DrillClip"/>, as a mod combat move; without its record the trainer only turns). Pairs come from each training check
+/// (<see cref="Capsules.ThrowData.DrillClip"/>, as a mod combat move; without its record, or on a race that does not link Husbandry's animation file
+/// (<paramref name="races"/>), the trainer only turns). Pairs come from each training check
 /// (<see cref="Pair"/>), the facing from every serial step (<see cref="Step"/>). Nothing is saved: a loaded pair starts its drill again.
 /// </summary>
-public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds)
+public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds, IReadOnlySet<string> races)
 {
     #region Drills
 
@@ -85,10 +86,20 @@ public sealed class TrainingDrills(CombatTechnique? move, float clipSeconds)
             string state = Progress(drill.Since, world.Tick, world.TickSeconds, clipSeconds) is { } p
                 ? "drilling " + (p * 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%"
                 : "resting";
-            text.AppendLine(who + " trains " + animal + ": " + state);
+            text.AppendLine(who + " trains " + animal + ": " + state + Linked(table, trainer));
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Whether the trainer's race links Husbandry's animation file, for the debug view (its body has no drill clip when not).
+    /// </summary>
+    string Linked(CharacterTable table, CharacterId trainer)
+    {
+        if (!table.TryResolveNext(trainer, out int t) || table.Cold(t)?.Race is not { } race) return "";
+
+        return races.Contains(race.StringId) ? "" : " (" + race.Name + " has no drill clip: it only turns)";
     }
 
     /// <summary>
